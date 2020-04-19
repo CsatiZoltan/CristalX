@@ -91,7 +91,7 @@ class OOF2:
 
     def read_image(self, label_image):
         # TODO: check somehow if the input is a label image
-        filename, extension = os.path.splitext(label_image)
+        filename, extension = os.path.splitext(os.path.basename(label_image))
         self._modules.image["name"] = filename
         self._modules.image["extension"] = extension
         self._modules.image["fullname"] = filename + extension

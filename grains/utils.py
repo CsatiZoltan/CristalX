@@ -34,8 +34,28 @@ def compress(filename, level=9):
         compressed.write(filename)
 
 
-def decompress(filename):
-    """Decompresses a zip archive.
+def decompress(filename, path=None):
+    """Decompresses the contents of a zip archive into the current directory.
+
+    Parameters
+    ----------
+    filename : str
+        Name of the zip archive.
+
+    path : str, optional
+        Directory to extract to. The default is the directory the function is called from.
+
+    See Also
+    --------
+    zipfile.ZipFile
+
+    """
+    with zipfile.ZipFile(filename, mode='r') as compressed:
+        compressed.extractall(path=path)
+
+
+def decompress_inmemory(filename):
+    """Decompresses the contents of a zip archive into a dictionary.
 
     Parameters
     ----------

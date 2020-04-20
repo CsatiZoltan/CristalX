@@ -27,7 +27,7 @@ class Analysis:
         Directory where the processed images are saved
     """
 
-    def __init__(self, label_image, interactive_mode=True):
+    def __init__(self, label_image, interactive_mode=False):
         """Initialize the class with file paths and with some options
 
         Parameters

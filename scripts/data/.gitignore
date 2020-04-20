@@ -1,0 +1,5 @@
+# Those files go here that can be autogenareted by the scripts
+/microstructure.txt
+/microstructure.script
+/1_elastoplastic.inp
+/1_elastoplastic_physical.inp

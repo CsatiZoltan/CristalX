@@ -8,6 +8,45 @@ import os
 import zipfile
 
 
+def duplicates(sequence):
+    """Set of duplicate elements in a sequence.
+
+    Parameters
+    ----------
+    sequence : sequence types (list, tuple, string, etc.)
+        Sequence possibly containing repeating elements.
+
+    Returns
+    -------
+    set
+        Set of unique values.
+
+    Notes
+    -----
+    Copied from https://stackoverflow.com/a/9836685/4892892
+
+    Examples
+    --------
+    Note that the order of the elements in the resulting set does not matter.
+
+    >>> a = [1, 2, 3, 2, 1, 5, 6, 5, 5, 5]  # list
+    >>> duplicates(a)
+    {1, 2, 5}
+    >>> a = (1, 1, 0, -1, -1, 0)  # tuple
+    >>> duplicates(a)
+    {0, 1, -1}
+    >>> a = 'abbcdkc'  # string
+    >>> duplicates(a)
+    {'c', 'b'}
+    """
+    seen = set()
+    seen_add = seen.add
+    # adds all elements it doesn't know yet to seen and all other to seen_twice
+    seen_twice = set(x for x in sequence if x in seen or seen_add(x))
+    # turn the set into a list (as requested)
+    return seen_twice
+
+
 def compress(filename, level=9):
     """Creates a zip archive from a single file.
 

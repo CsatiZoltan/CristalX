@@ -47,6 +47,39 @@ def duplicates(sequence):
     return seen_twice
 
 
+def flatten_list(nested_list):
+    """Merge a list of lists to a single list.
+
+    Parameters
+    ----------
+    nested_list : list
+        List containing other lists.
+
+    Returns
+    -------
+    list
+        Flattened list.
+
+    Notes
+    -----
+    - Only a single level (i.e. list of lists) is handled, see the second example.
+    - Several methods, such as list comprehension, monoid and loops, are proposed in
+      https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-list-of-lists.
+      Here, the list comprehension approach is used.
+
+    Examples
+    --------
+    >>> nested_list = [['some'], ['items']]
+    >>> flatten_list(nested_list)
+    ['some', 'items']
+    >>> multiply_nested_list = [[['item'], 'within', 'item']]
+    >>> flatten_list(multiply_nested_list)
+    [['item'], 'within', 'item']
+
+    """
+    return [item for sublist in nested_list for item in sublist]
+
+
 def compress(filename, level=9):
     """Creates a zip archive from a single file.
 

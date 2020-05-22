@@ -59,3 +59,42 @@ def build_skeleton(label_image, connectivity=1, detect_boundaries=True):
     # Build the skeleton network using `skan`
     skeleton_network = Skeleton(skeleton, source_image=label_image, keep_images=True)
     return skeleton_network
+
+
+def polygon_orientation(polygon):
+    """Determines whether a polygon is oriented clockwise or counterclockwise.
+
+    Parameters
+    ----------
+    polygon : list
+        Each element of the list denotes a vertex of the polygon and in turn is another list of two
+        elements: the x and y coordinates of a vertex.
+
+    Returns
+    -------
+    orientation : {'cw', 'ccw'}
+        'cw': clockwise, 'ccw': counterclockwise orientation
+
+    Notes
+    -----
+    The formula to determine the orientation is from https://stackoverflow.com/a/1165943/4892892.
+    For simple polygons (polygons that admit a well-defined interior), a faster algorithm exits, see
+    https://en.wikipedia.org/wiki/Curve_orientation#Orientation_of_a_simple_polygon.
+
+    Examples
+    --------
+    >>> polygon = [[5, 0], [6, 4], [4, 5], [1, 5], [1, 0]]
+    >>> polygon_orientation(polygon)
+    'ccw'
+
+    """
+    n_vertex = len(polygon)
+    edge_sum = 0
+    for idx, vertex in enumerate(polygon):
+        next_vertex = polygon[(idx + 1) % n_vertex]  # allow indexing past the last vertex
+        edge_sum += (next_vertex[0] - vertex[0]) * (next_vertex[1] + vertex[1])
+    if edge_sum > 0:
+        orientation = 'cw'
+    else:
+        orientation = 'ccw'
+    return orientation

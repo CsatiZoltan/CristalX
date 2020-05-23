@@ -47,6 +47,34 @@ def duplicates(sequence):
     return seen_twice
 
 
+def toggle(lst):
+    """Return True for False values and False for True values in a list.
+
+    Parameters
+    ----------
+    lst : list
+        An arbitrary list, possibly containing other lists.
+
+    Returns
+    -------
+    list
+        Element-wise logical not operator applied on the input list.
+
+    Notes
+    -----
+    Solution taken from https://stackoverflow.com/a/51122372/4892892.
+
+    Examples
+    --------
+    >>> toggle([True, False])
+    [False, True]
+    >>> toggle(['h', 0, 2.3, -2, 5, []])
+    [False, True, False, False, False, True]
+
+    """
+    return list(map(lambda item: not item, lst))
+
+
 def flatten_list(nested_list):
     """Merge a list of lists to a single list.
 
@@ -78,6 +106,36 @@ def flatten_list(nested_list):
 
     """
     return [item for sublist in nested_list for item in sublist]
+
+
+def map_in_place(function, a_list):
+    """Apply a function to each member of a list in-place.
+
+    Parameters
+    ----------
+    function : function object
+        Function to be applied to the entries of the list.
+    a_list : list
+        List.
+
+    Notes
+    -----
+    A list comprehension or functional tools work on iterators, thereby not modifying the
+    original container (https://stackoverflow.com/a/4148523/4892892). For in-place modification,
+    the conventional for loop approach is used (https://stackoverflow.com/a/4148525/4892892).
+
+    Examples
+    --------
+    >>> nested_list = [['some'], ['items']]
+    >>> flatten_list(nested_list)
+    ['some', 'items']
+    >>> multiply_nested_list = [[['item'], 'within', 'item']]
+    >>> flatten_list(multiply_nested_list)
+    [['item'], 'within', 'item']
+
+    """
+    for i in range(len(a_list)):
+        a_list[i] = function(a_list[i])
 
 
 def compress(filename, level=9):

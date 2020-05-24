@@ -75,6 +75,30 @@ def toggle(lst):
     return list(map(lambda item: not item, lst))
 
 
+def index_list(lst, indices):
+    """Index a list by another list.
+
+    Parameters
+    ----------
+    lst : list
+        List to be indexed.
+    indices : list
+        Indices of the original list that will form the new list.
+
+    Returns
+    -------
+    list
+        Members of `lst`, selected by `indices`.
+
+    Examples
+    --------
+    >>> index_list(['c', ['nested', 'list'], 13], [1, 2])
+    [['nested', 'list'], 13]
+
+    """
+    return [lst[idx] for idx in indices]
+
+
 def flatten_list(nested_list):
     """Merge a list of lists to a single list.
 

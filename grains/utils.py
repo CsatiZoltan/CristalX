@@ -231,3 +231,8 @@ def decompress_inmemory(filename):
                 name = os.path.splitext(thisfile.name)[0]
                 data[name] = compressed.read(thisfile.name).decode()
     return data
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod(verbose=True)

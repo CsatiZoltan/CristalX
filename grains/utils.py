@@ -108,7 +108,7 @@ def flatten_list(nested_list):
     return [item for sublist in nested_list for item in sublist]
 
 
-def map_in_place(function, a_list):
+def map_inplace(function, a_list):
     """Apply a function to each member of a list in-place.
 
     Parameters
@@ -126,12 +126,9 @@ def map_in_place(function, a_list):
 
     Examples
     --------
-    >>> nested_list = [['some'], ['items']]
-    >>> flatten_list(nested_list)
-    ['some', 'items']
-    >>> multiply_nested_list = [[['item'], 'within', 'item']]
-    >>> flatten_list(multiply_nested_list)
-    [['item'], 'within', 'item']
+    >>> lst = ['2', 2]; func = lambda x: x*2
+    >>> map_inplace(func, lst); lst
+    ['22', 4]
 
     """
     for i in range(len(a_list)):

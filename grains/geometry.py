@@ -108,7 +108,8 @@ def segments2polygon(segments, orientation='ccw'):
     a polygon, but you want to know the ordering. As convenience, the resulting polygon is also
     determined, either in clockwise or in counterclockwise orientation. A line segment is given
     by its two end points but it can also contain intermediate points in between. The points on
-    the segments are assumed to be ordered.
+    the segments are assumed to be ordered. If certain segments are not used in forming a
+    polygon, they are excluded from the output lists.
 
     Parameters
     ----------
@@ -157,9 +158,12 @@ def segments2polygon(segments, orientation='ccw'):
     # Start with an arbitrary segment, the first one
     last_segment = 0  # index of the lastly added segment to the path
     order = [0]
+    first_vertex = segments[last_segment][0, :]
     last_vertex = segments[last_segment][-1, :]
     # Visit all vertices of the would-be polygon and find the chain of connecting segments
     for vertex in range(n_segment - 1):
+        if np.allclose(last_vertex, first_vertex):  # one complete cycle is finished
+            break
         # Search for segments connecting to the last vertex of the path
         for segment_index, segment in enumerate(segments):
             if segment_index == last_segment:  # exclude the last segment of the path

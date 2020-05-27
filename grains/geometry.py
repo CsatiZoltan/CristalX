@@ -10,6 +10,7 @@ import numpy as np
 from skimage.segmentation import find_boundaries
 from skimage.morphology import skeletonize
 from skan import Skeleton
+from .utils import toggle
 
 
 def build_skeleton(label_image, connectivity=1, detect_boundaries=True):
@@ -98,3 +99,101 @@ def polygon_orientation(polygon):
     else:
         orientation = 'ccw'
     return orientation
+
+
+def segments2polygon(segments, orientation='ccw'):
+    """Interlaces connecting line segments so that they form a polygon.
+
+    This function assumes that you already know that a set of line segments form the boundary of
+    a polygon, but you want to know the ordering. As convenience, the resulting polygon is also
+    determined, either in clockwise or in counterclockwise orientation. A line segment is given
+    by its two end points but it can also contain intermediate points in between. The points on
+    the segments are assumed to be ordered.
+
+    Parameters
+    ----------
+    segments : list
+        Each element of the list gives N>=2 points on the line segment, ordered from one end
+        point to the other. If N=2, the two end points are meant. The points are provided as an Nx2
+        ndarray, the first column giving the x, the second column giving the y coordinates of the
+        points.
+    orientation : {'cw', 'ccw'}, optional
+        Clockwise ('cw') or counterclockwise ('ccw') orientation of the polygon.
+        The default is 'ccw'.
+
+    Returns
+    -------
+    order : list
+        Order of the segments so that they form a polygon.
+    is_swapped : list
+        A list of bool with True value if the orientation of the corresponding segment had to be
+        swapped to form the polygon.
+    polygon : ndarray
+        The resulting polygon, given as an Mx2 ndarray, where M is the number of unique points on
+        the polygon (i.e. only one end point is kept for two connecting segments).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> segments = [np.array([[1, 1], [1.5, 2], [2, 3]]), np.array([[1, 1], [-1, 2]]),
+    ... np.array([[1.5, -3], [2, 3]]), np.array([[1.5, -3], [-1, 2]])]
+    >>> order, redirected, polygon = segments2polygon(segments, orientation='cw')
+    >>> order
+    [0, 2, 3, 1]
+    >>> redirected
+    [False, True, True, False]
+    >>> polygon
+    array([[ 1. ,  1. ],
+           [ 1.5,  2. ],
+           [ 2. ,  3. ],
+           [ 1.5, -3. ],
+           [-1. ,  2. ]])
+
+    """
+    # The path is the collection of consecutively added segments. When there are no more segments
+    # to add, the path becomes the polygon. First, we identify the segments that form the polygon.
+    n_segment = len(segments)
+    redirected = [False for i in range(n_segment)]
+    # Start with an arbitrary segment, the first one
+    last_segment = 0  # index of the lastly added segment to the path
+    order = [0]
+    last_vertex = segments[last_segment][-1, :]
+    # Visit all vertices of the would-be polygon and find the chain of connecting segments
+    for vertex in range(n_segment - 1):
+        # Search for segments connecting to the last vertex of the path
+        for segment_index, segment in enumerate(segments):
+            if segment_index == last_segment:  # exclude the last segment of the path
+                continue
+            # Check if the first or second end point of the segment connects to the last vertex
+            first_endpoint = segment[0, :]
+            second_endpoint = segment[-1, :]
+            vertex_connects_to_first_endpoint = np.allclose(first_endpoint, last_vertex)
+            vertex_connects_to_second_endpoint = np.allclose(second_endpoint, last_vertex)
+            if vertex_connects_to_first_endpoint or vertex_connects_to_second_endpoint:
+                order.append(segment_index)
+                last_segment = segment_index
+            if vertex_connects_to_first_endpoint:
+                last_vertex = second_endpoint
+                break
+            elif vertex_connects_to_second_endpoint:
+                last_vertex = first_endpoint
+                redirected[segment_index] = True  # change the orientation of the connecting segment
+                break
+            # TODO: add checks against edge cases
+
+    # Create the polygon from the segments
+    polygon = []
+    for segment_index in order:
+        segment = segments[segment_index].copy()
+        if redirected[segment_index]:
+            segment = np.flipud(segment)
+        polygon.append(segment[0:-1])
+    polygon = np.vstack(polygon)
+
+    # Handle the orientation of the polygon
+    if polygon_orientation(polygon) != orientation:
+        order.reverse()
+        redirected = toggle(redirected)
+        polygon = np.flipud(polygon)
+
+    return order, redirected, polygon

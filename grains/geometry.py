@@ -10,7 +10,8 @@ import numpy as np
 from skimage.segmentation import find_boundaries
 from skimage.morphology import skeletonize
 from skan import Skeleton
-from .utils import toggle
+
+from .utils import toggle, index_list, non_unique
 
 
 def build_skeleton(label_image, connectivity=1, detect_boundaries=True):
@@ -60,6 +61,91 @@ def build_skeleton(label_image, connectivity=1, detect_boundaries=True):
     # Build the skeleton network using `skan`
     skeleton_network = Skeleton(skeleton, source_image=label_image, keep_images=True)
     return skeleton_network
+
+
+def skeleton2regions(skeleton_network):
+    """Determines the regions bounded by a skeleton network.
+
+    This function can be perceived as an intermediate step between a skeleton network and
+    completely geometrical representation of the regions. That is, it keeps the key topological
+    information required to create a fully geometrical description, but it also contains
+    coordinates of the region boundaries. The outputs of this function can be used to build
+    different region representations.
+
+    Parameters
+    ----------
+    skeleton_network : Skeleton
+        Geometrical and topological information about the skeleton network of a label image.
+
+    Returns
+    -------
+    region_branches : dict
+        For each region it contains the branch indices that bound that region.
+    branch_coordinates : list
+        Coordinates of the points on each branch.
+    branch_regions : dict
+        For each region it contains the neighboring regions.
+        This auxiliary data is not essential as it can be restored from `region_branches`.
+        However, it is computed as temporary data needed for `region_branches`.
+
+    See Also
+    --------
+    build_skeleton
+
+    """
+    if not isinstance(skeleton_network, Skeleton):
+        raise Exception('Skeleton object is expected.')
+    # Extract branch-junction connectivities and the coordinates of the junctions
+    S = skeleton_network
+    image_size = np.shape(S.source_image)
+    endpoints_src = S.paths.indices[S.paths.indptr[:-1]]
+    endpoints_dst = S.paths.indices[S.paths.indptr[1:] - 1]
+    branch_junctions = np.transpose(np.vstack((endpoints_src, endpoints_dst)))
+    junctions = np.unique([endpoints_src, endpoints_dst])
+    junction_coordinates = S.coordinates[junctions, :]
+
+    # Find which regions are incident to a junction
+    junction_regions = {key: None for key in junctions}
+    region_junctions = {}
+    # TODO: Simplify the for-loop by using e.g. enumerate or
+    #  https://discuss.codecademy.com/t/loop-two-variables-simultaneously-in-python-3/261808/2
+    for i in range(len(junctions)):
+        # Snap junction to the nearest image coordinate
+        junction_coord = np.round(junction_coordinates[i, :]).astype(np.uint32)
+        # Look-around for the neighboring pixels (be careful on the image boundaries)
+        neighbor_idx = np.s_[
+                       max(junction_coord[0] - 2, 0):min(junction_coord[0] + 3, image_size[0]),
+                       max(junction_coord[1] - 2, 0):min(junction_coord[1] + 3, image_size[1])]
+        neighbors = S.source_image[neighbor_idx]
+        neighboring_regions = np.unique(neighbors)
+        # Save junction-region and the region-junction connectivities
+        # TODO: perhaps no need for the region-junction connectivities
+        junction_regions[junctions[i]] = neighboring_regions
+        for region in neighboring_regions:
+            if region not in region_junctions:
+                region_junctions[region] = [junctions[i]]
+            else:
+                region_junctions[region].append(junctions[i])
+
+    # Determine which regions neighbor a branch
+    branch_regions = {}
+    for i, branch in enumerate(branch_junctions):
+        neighboring_regions = np.intersect1d(junction_regions[branch[0]],
+                                             junction_regions[branch[1]])
+        branch_regions[i] = neighboring_regions
+
+    # For each region, find the branches that bound it
+    region_branches = {}
+    for branch, regions in branch_regions.items():
+        for region in regions:
+            if region not in region_branches:
+                region_branches[region] = [branch]
+            else:
+                region_branches[region].append(branch)
+
+    # Return outputs
+    branch_coordinates = [S.path_coordinates(i) for i in range(S.n_paths)]
+    return region_branches, branch_coordinates, branch_regions
 
 
 def polygon_orientation(polygon):

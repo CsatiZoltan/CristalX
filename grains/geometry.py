@@ -307,8 +307,8 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, orientation=
         Clockwise ('cw') or counterclockwise ('ccw') orientation of the polygons.
         The default is 'ccw'.
     close : bool, optional
-        When True, one vertex in the polygons is repeated to indicate that the polygon is indeed
-        closed. This option is useful for plotting the polygons. The default is False.
+        When True, one vertex in the polygons is repeated to indicate that the polygons are
+        indeed closed. The default is False.
 
     Returns
     -------
@@ -341,7 +341,7 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, orientation=
     ...   [2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
     ...   [2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]],
     ...  dtype=np.int8)
-    >>> polygons = polygonize(test_image, connectivity=1, close=True)
+    >>> polygons = polygonize(test_image, connectivity=1)
 
     """
     polygons = {}
@@ -358,13 +358,46 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, orientation=
         if close:
             poly = np.vstack((poly, poly[0, :]))
         polygons[region] = poly
-        plt.plot(poly[:, 0], poly[:, 1])
+        plot_polygon(poly)
     axes = plt.gca()
     axes.set_aspect('equal')
     # axes.set_axis_off()
     # overlay_skeleton_networkx(S.graph, S.coordinates, image=label_image)
     plt.show()
     return polygons
+
+
+def plot_polygon(vertices, **kwargs):
+    """Polygon representation of a label image.
+
+    Parameters
+    ----------
+    vertices : ndarray
+        2D ndarray of size Nx2, with each row designating a vertex and the two columns
+        giving the x and y coordinates of the vertices, respectively.
+    **kwargs : Line2D properties, optional
+        Keyword arguments accepted by matplotlib.pyplot.plot
+
+    Returns
+    -------
+    None
+
+    See Also
+    --------
+    matplotlib.pyplot.plot
+
+    Examples
+    --------
+    >>> plot_polygon(np.array([[1, 1], [2, 3], [1.5, -3], [-1, 2]]), marker='o');  plt.show()
+
+    """
+    # Close the polygon (repeat one vertex) if not yet closed
+    first_vertex = vertices[0, :]
+    last_vertex = vertices[-1, :]
+    closed = np.allclose(first_vertex, last_vertex)
+    if not closed:
+        vertices = np.vstack((vertices, first_vertex))
+    plt.plot(vertices[:, 0], vertices[:, 1], **kwargs)
 
 
 if __name__ == "__main__":

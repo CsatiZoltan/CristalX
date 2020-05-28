@@ -7,6 +7,8 @@ This module provides utility functions that are useful for the **grains** packag
 import os
 import zipfile
 
+import numpy as np
+
 
 def duplicates(sequence):
     """Set of duplicate elements in a sequence.
@@ -157,6 +159,85 @@ def map_inplace(function, a_list):
     """
     for i in range(len(a_list)):
         a_list[i] = function(a_list[i])
+
+
+def non_unique(array, axis=None):
+    """Finds indices of non-unique elements in a 1D or 2D ndarray.
+
+    Parameters
+    ----------
+    array : ndarray
+        Array in which the non-unique elements are searched.
+    axis : {None, 0, 1}, optional
+        The axis to operate on. If None, `array` will be flattened. If an integer, the subarrays
+        indexed by the given axis will be flattened and treated as the elements of a 1-D array with
+        the dimension of the given axis. Object arrays or structured arrays that contain objects are
+        not supported if the `axis` kwarg is used. The default is None.
+
+    Returns
+    -------
+    nonunique_values : list
+        Unique (individual, row or column) entries.
+    nonunique_indices : list
+        Each element of the list corresponds to non-unique elements, whose indices are given in
+        a 1D numpy array.
+
+    Examples
+    --------
+    In a 1D array, the repeated values and their indices are found by
+
+    >>> val, idx = non_unique(np.array([1, -1, 0, -1, 2, 5, 0, -1]))
+    >>> val
+    [-1, 0]
+    >>> idx
+    [array([1, 3, 7]), array([2, 6])]
+
+    In the matrix below, we can see that rows 0 and 2 are identical, as well as rows 1 and 4.
+
+    >>> val, idx = non_unique(np.array([[1, 3], [2, 4], [1, 3], [-1, 0], [2, 4]]), axis=0)
+    >>> val
+    [array([1, 3]), array([2, 4])]
+    >>> idx
+    [array([0, 2]), array([1, 4])]
+
+    By transposing the matrix above, the same holds for the columns.
+
+    >>> val, idx = non_unique(np.array([[1, 2, 1, -1, 2], [3, 4, 3, 0, 4]]), axis=1)
+    >>> val
+    [array([1, 3]), array([2, 4])]
+    >>> idx
+    [array([0, 2]), array([1, 4])]
+
+    If the dimensions along which to find the duplicates are not given, the input is flattened
+    and the indexing happens in C-order (row-wise).
+
+    >>> val, idx = non_unique(np.array([[1, 2, 1, -1, 2], [3, 4, 3, 0, 4]]))
+    >>> val
+    [1, 2, 3, 4]
+    >>> idx
+    [array([0, 2]), array([1, 4]), array([5, 7]), array([6, 9])]
+
+    """
+    if axis not in {None, 0, 1}:
+        raise Exception('Parameter `axis` must be one of the following: None, 0, 1.')
+    # Indices of the repeated elements
+    _, idx, counts = np.unique(array, axis=axis, return_counts=True, return_inverse=True)
+    distinct_indices = np.unique(idx)
+    repeated_indices = distinct_indices[counts > 1]
+    # Help in consistent indexing
+    if axis is None:
+        array = array.flatten()
+    elif axis == 0:
+        pass
+    elif axis == 1:
+        array = array.T
+    # Find the repeated values and their positions at the same time
+    nonunique_indices = []
+    nonunique_values = []
+    for i in repeated_indices:
+        nonunique_indices.append(np.nonzero(idx == i)[0])
+        nonunique_values.append(array[idx == i][0])
+    return nonunique_values, nonunique_indices
 
 
 def compress(filename, level=9):

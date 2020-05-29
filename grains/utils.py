@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 
 """
-This module provides utility functions that are useful for the **grains** package.
+This module provides *general* utility functions used by the **grains** package. The specific
+helper functions reside in the proper module. For example, a function that works on a general
+list goes here, but a computational geometry algorithm goes to the **geometry** module. The
+functions in the **utils** module can be interesting for other projects too, partly because of
+their general scope, and partly because of the few dependencies.
 """
 
 import os

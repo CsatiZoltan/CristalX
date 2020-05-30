@@ -183,11 +183,7 @@ def polygon_orientation(polygon):
     for idx, vertex in enumerate(polygon):
         next_vertex = polygon[(idx + 1) % n_vertex]  # allow indexing past the last vertex
         edge_sum += (next_vertex[0] - vertex[0]) * (next_vertex[1] + vertex[1])
-    if edge_sum > 0:
-        orientation = 'cw'
-    else:
-        orientation = 'ccw'
-    return orientation
+    return 'cw' if edge_sum > 0 else 'ccw'
 
 
 def segments2polygon(segments, orientation='ccw'):
@@ -250,7 +246,7 @@ def segments2polygon(segments, orientation='ccw'):
     first_vertex = segments[last_segment][0, :]
     last_vertex = segments[last_segment][-1, :]
     # Visit all vertices of the would-be polygon and find the chain of connecting segments
-    for vertex in range(n_segment - 1):
+    for _ in range(n_segment - 1):
         if np.allclose(last_vertex, first_vertex):  # one complete cycle is finished
             break
         # Search for segments connecting to the last vertex of the path

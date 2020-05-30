@@ -90,7 +90,7 @@ class Analysis:
         """
         correct_type = isinstance(pixel_per_unit, (int, float, np.ndarray))
         scalar = np.isscalar(pixel_per_unit)
-        if not correct_type or not scalar:
+        if not (correct_type and scalar):
             raise Exception('A scalar number expected.')
         self.scale = pixel_per_unit
 

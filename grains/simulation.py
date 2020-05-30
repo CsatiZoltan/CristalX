@@ -60,7 +60,7 @@ def hallpetch_constants(sigma_y, d):
 
     """
 
-    if not isinstance(sigma_y, list) or not isinstance(d, list):
+    if not (isinstance(sigma_y, list) and isinstance(d, list)):
         raise Exception("Inputs must be lists.")
     if len(sigma_y) != len(d):
         raise Exception("Inputs must have the same number of elements.")

@@ -30,10 +30,9 @@ class QuadSkeletonGeometry(SkeletonGeometry):
         super().__init__(leftright_periodicity, topbottom_periodicity)
 
     def __repr__(self):
-        repr_OOF = "QuadSkeleton(left_right_periodicity={1}, " \
-            "top_bottom_periodicity={2})".format(self.leftright_periodicity,
-                                                 self.topbottom_periodicity)
-        return repr_OOF
+        return "QuadSkeleton(left_right_periodicity={1}, " \
+                "top_bottom_periodicity={2})".format(self.leftright_periodicity,
+                                                     self.topbottom_periodicity)
 
 class TriSkeletonGeometry(SkeletonGeometry):
 
@@ -44,11 +43,10 @@ class TriSkeletonGeometry(SkeletonGeometry):
         self.arrangement = arrangement
 
     def __repr__(self):
-        repr_OOF = "TriSkeleton(arrangement='{0}', left_right_periodicity={1}, " \
-            "top_bottom_periodicity={2})".format(self.arrangement,
-                                                 self.leftright_periodicity,
-                                                 self.topbottom_periodicity)
-        return repr_OOF
+        return "TriSkeleton(arrangement='{0}', left_right_periodicity={1}, " \
+                "top_bottom_periodicity={2})".format(self.arrangement,
+                                                     self.leftright_periodicity,
+                                                     self.topbottom_periodicity)
 
 
 class FixedDict:

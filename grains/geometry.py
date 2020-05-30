@@ -8,8 +8,10 @@ the geometry instead of an image, thereby creating good quality meshes.
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import collections
 from skimage.segmentation import find_boundaries
 from skimage.morphology import skeletonize
+from skimage.color import label2rgb
 from skan import Skeleton
 
 from .utils import toggle, index_list, non_unique
@@ -358,17 +360,13 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, orientation=
         if close:
             poly = np.vstack((poly, poly[0, :]))
         polygons[region] = poly
-        plot_polygon(poly)
-    axes = plt.gca()
-    axes.set_aspect('equal')
-    # axes.set_axis_off()
     # overlay_skeleton_networkx(S.graph, S.coordinates, image=label_image)
     plt.show()
     return polygons
 
 
 def plot_polygon(vertices, **kwargs):
-    """Polygon representation of a label image.
+    """Plots a polygon.
 
     Parameters
     ----------
@@ -398,6 +396,50 @@ def plot_polygon(vertices, **kwargs):
     if not closed:
         vertices = np.vstack((vertices, first_vertex))
     plt.plot(vertices[:, 0], vertices[:, 1], **kwargs)
+
+
+def overlay_regions(label_image, polygons, axes=None):
+    """Plots a label image, and overlays polygonal regions over it.
+
+    Parameters
+    ----------
+    label_image : 2D ndarray with signed integer entries
+        Label image, representing a segmented image.
+    polygons : dict
+        The keys in the dictionary correspond to the labels of the input image, while the values
+        are ndarray objects with two columns, the x and y coordinates of the polygons.
+        This format is respected by the output of the `polygonize` function.
+    axes : matplotlib.axes.Axes, optional
+        An Axes object on which to draw. If None, a new one is created.
+
+    Returns
+    -------
+    axes : matplotlib.axes.Axes
+        The Axes object on which the plot is drawn.
+
+    See Also
+    --------
+    polygonize
+    matplotlib.collections.LineCollection
+
+    """
+    # TODO: support an option to give the number of identified regions as a title
+    if axes is None:
+        _, axes = plt.subplots()
+    # Extract the polygons from the dictionary and convert them to a list to ease the plotting.
+    # At the same time, swap the x and y coordinates so that the polygons are expressed in the
+    # same coordinate system as the label image.
+    polygons = [polygons[i][:, ::-1] for i in polygons.keys()]
+    # Plot the polygons efficiently
+    axes.add_collection(collections.LineCollection(polygons, colors='black'))
+    # Plot the label image, with each color corresponding to a different region
+    random_colors = np.random.random((len(polygons), 3))
+    plt.imshow(label2rgb(label_image, colors=random_colors))
+    # Axis settings
+    axes.set_aspect('equal')
+    axes.set_axis_off()
+    plt.tight_layout()
+    return axes
 
 
 if __name__ == "__main__":

@@ -66,7 +66,7 @@ def build_skeleton(label_image, connectivity=1, detect_boundaries=True):
     return skeleton_network
 
 
-def skeleton2regions(skeleton_network):
+def skeleton2regions(skeleton_network, look_around=2):
     """Determines the regions bounded by a skeleton network.
 
     This function can be perceived as an intermediate step between a skeleton network and
@@ -79,6 +79,9 @@ def skeleton2regions(skeleton_network):
     ----------
     skeleton_network : Skeleton
         Geometrical and topological information about the skeleton network of a label image.
+    look_around : int, optional
+        A junction is considered part of a region if it is at most `look_around` pixel far from it.
+        The default is 2. For further details, see the Notes below.
 
     Returns
     -------
@@ -147,8 +150,10 @@ def skeleton2regions(skeleton_network):
         junction_coord = np.round(junction_coordinates[i, :]).astype(np.uint32)
         # Look-around for the neighboring pixels (be careful on the image boundaries)
         neighbor_idx = np.s_[
-                       max(junction_coord[0] - 2, 0):min(junction_coord[0] + 3, image_size[0]),
-                       max(junction_coord[1] - 2, 0):min(junction_coord[1] + 3, image_size[1])]
+                       max(junction_coord[0] - look_around, 0):
+                       min(junction_coord[0] + look_around+1, image_size[0]),
+                       max(junction_coord[1] - look_around, 0):
+                       min(junction_coord[1] + look_around+1, image_size[1])]
         neighbors = S.source_image[neighbor_idx]
         neighboring_regions = np.unique(neighbors)
         # Save junction-region and the region-junction connectivities
@@ -347,7 +352,8 @@ def segments2polygon(segments, orientation='ccw'):
     return order, redirected, polygon
 
 
-def polygonize(label_image, connectivity=1, detect_boundaries=True, orientation='ccw', close=False):
+def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=2,
+               orientation='ccw', close=False):
     """Polygon representation of a label image.
 
     Parameters
@@ -360,6 +366,9 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, orientation=
     detect_boundaries : bool, optional
         When True, the image boundaries will be treated as part of the skeleton. This allows
         identifying boundary regions in the `skeleton2regions` function. The default is True.
+    look_around : int, optional
+        A junction is considered part of a region if it is at most `look_around` pixel far from it.
+        The default is 2. For further details, see the Notes below.
     orientation : {'cw', 'ccw'}, optional
         Clockwise ('cw') or counterclockwise ('ccw') orientation of the polygons.
         The default is 'ccw'.
@@ -405,7 +414,7 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, orientation=
     # Build the skeleton network from the label image
     S = build_skeleton(label_image, connectivity, detect_boundaries)
     # Identify the regions from the skeleton
-    region_branches, branch_coordinates, _ = skeleton2regions(S)
+    region_branches, branch_coordinates, _ = skeleton2regions(S, look_around)
     # Represent each region as a polygon
     for region, branches in region_branches.items():
         if region == -1:  # artificial outer region

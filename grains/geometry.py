@@ -12,7 +12,7 @@ from matplotlib import collections
 from skimage.segmentation import find_boundaries
 from skimage.morphology import skeletonize
 from skimage.color import label2rgb
-from skan import Skeleton
+from skan import Skeleton, summarize
 
 from .utils import toggle, index_list, non_unique
 
@@ -100,9 +100,11 @@ def skeleton2regions(skeleton_network):
         raise Exception('Skeleton object is expected.')
     # Extract branch-junction connectivities and the coordinates of the junctions
     S = skeleton_network
+    skeleton_data = summarize(S)
+    mask = skeleton_data['branch-type'] == 2  # only junction-to-junction connections create regions
+    endpoints_src = skeleton_data['node-id-src'][mask].to_numpy()
+    endpoints_dst = skeleton_data['node-id-dst'][mask].to_numpy()
     image_size = np.shape(S.source_image)
-    endpoints_src = S.paths.indices[S.paths.indptr[:-1]]
-    endpoints_dst = S.paths.indices[S.paths.indptr[1:] - 1]
     branch_junctions = np.transpose(np.vstack((endpoints_src, endpoints_dst)))
     junctions = np.unique([endpoints_src, endpoints_dst])
     junction_coordinates = S.coordinates[junctions, :]
@@ -146,8 +148,8 @@ def skeleton2regions(skeleton_network):
             else:
                 region_branches[region].append(branch)
 
+    branch_coordinates = [S.path_coordinates(i) for i in range(S.n_paths) if mask[i]]
     # Return outputs
-    branch_coordinates = [S.path_coordinates(i) for i in range(S.n_paths)]
     return region_branches, branch_coordinates, branch_regions
 
 

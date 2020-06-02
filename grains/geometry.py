@@ -94,6 +94,34 @@ def skeleton2regions(skeleton_network):
     See Also
     --------
     build_skeleton
+    overlay_regions
+
+    Notes
+    -----
+    Although the algorithms were created to require minimum user intervention, some parameters
+    must be fine-tuned so as to achieve an optimal result in identifying the regions. Visualization
+    plays an important role in it. Full automation is either not possible or would require a huge
+    computational cost. The shortcomings of the algorithms in this function are the following:
+
+    - It is assumed that only branches that connect two junctions form the boundary of a region.
+      This rule ensures that end points are not taken into account. However, this assumption also
+      rules out the identification of region being contained in another region as the embedded
+      region would be described by an isolated cycle.
+    - The recognition of which branches form a region is based on the premise that a junction
+      belongs to a region if its n-pixel neighbourhood contains a pixel from that region.
+      Ideally, n=1 would be used, meaning that the single-pixel width skeleton is located at most
+      1 pixel afar from the regions it lies among. This is true but the junctions of the skeleton
+      can be farther than 1 pixel from a region. Hence, `n` has to be a parameter of our model.
+      Increasing `n` helps in including junctions (and hence the connecting branches to it) to
+      regions, which actually belong there. On the other hand, if `n` is too large, junctions
+      that do not belong to the region are also included. Currently, we recommend trying
+      different parameters `n`, plot the reconstructed regions over the label image using the
+      `overlay_regions` function, and see how good the result is. As a heuristic, start with `n=2`.
+    - There are configurations in which two junctions are part of a region but those two
+      junctions are connected by more than one branches (typically two). The question is: which
+      branch to choose as a boundary part of the region? The answer is: the one that is entirely
+      inside the region. Testing it is probably not easy or is costly, therefore, we rely on a
+      heuristic argument: the branch with the shortest length is chosen.
 
     """
     if not isinstance(skeleton_network, Skeleton):

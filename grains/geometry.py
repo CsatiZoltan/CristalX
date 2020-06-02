@@ -71,7 +71,7 @@ def skeleton2regions(skeleton_network):
 
     This function can be perceived as an intermediate step between a skeleton network and
     completely geometrical representation of the regions. That is, it keeps the key topological
-    information required to create a fully geometrical description, but it also contains
+    information required to create a fully geometrical description, but it also contains the
     coordinates of the region boundaries. The outputs of this function can be used to build
     different region representations.
 
@@ -147,6 +147,31 @@ def skeleton2regions(skeleton_network):
                 region_branches[region] = [branch]
             else:
                 region_branches[region].append(branch)
+
+    # More than one branch can connect two junctions. In that case, leave only one.
+    branch_lengths = S.path_lengths()
+    for i in region_branches.keys():
+        branches = region_branches[i]
+        junctions = region_junctions[i]
+        if len(branches) > len(junctions):
+            # Branches that connect the same two junctions (i.e. multiple edges in the graph)
+            # branch_junctions[region_branches[i]]
+            _, id = non_unique(branch_junctions[branches], 0)
+            # Only the shortest branch bounds this region
+            edges_to_remove = []
+            for multiple_edges in id:
+                global_multiple_edges = index_list(branches, multiple_edges)
+                lengths = branch_lengths[global_multiple_edges]
+                idx_min_length = np.argmin(lengths)
+                other_edges = np.setdiff1d(range(len(multiple_edges)), idx_min_length)
+                edges_to_remove.append(multiple_edges[other_edges])
+                # Remove the current region among the regions that connect to the removed edges
+                for branch in index_list(global_multiple_edges, other_edges):
+                    regions = branch_regions[branch]
+                    kept_regions = regions[i != regions]
+                    branch_regions[branch] = kept_regions
+            correct_branches = np.delete(branches, edges_to_remove).tolist()
+            region_branches[i] = correct_branches
 
     branch_coordinates = [S.path_coordinates(i) for i in range(S.n_paths) if mask[i]]
     # Return outputs

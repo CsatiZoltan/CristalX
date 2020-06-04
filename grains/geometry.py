@@ -250,44 +250,47 @@ def polygon_orientation(polygon):
     return orientation
 
 
-def segments2polygon(segments, orientation='ccw'):
-    """Interlaces connecting line segments so that they form a polygon.
+def branches2boundary(branches, orientation='ccw'):
+    """Joins connecting branches so that they form the boundary of a surface.
 
-    This function assumes that you already know that a set of line segments form the boundary of
-    a polygon, but you want to know the ordering. As convenience, the resulting polygon is also
-    determined, either in clockwise or in counterclockwise orientation. A line segment is given
-    by its two end points but it can also contain intermediate points in between. The points on
-    the segments are assumed to be ordered. If certain segments are not used in forming a
-    polygon, they are excluded from the output lists.
+    This function assumes that you already know that a set of branches form the boundary of a
+    surface, but you want to know the ordering. Clockwise or counterclockwise orientation is
+    supported. A branch is given by its two end points but it can also contain intermediate points
+    in between, as in the general case. The points on the branches are assumed to be ordered. If
+    certain branches are not used in forming the boundary of a surface, they are excluded from the
+    output lists.
 
     Parameters
     ----------
-    segments : list
-        Each element of the list gives N>=2 points on the line segment, ordered from one end
-        point to the other. If N=2, the two end points are meant. The points are provided as an Nx2
-        ndarray, the first column giving the x, the second column giving the y coordinates of the
-        points.
+    branches : list
+        Each element of the list gives N>=2 points on the branch, ordered from one end point to the
+        other. If N=2, the two end points are meant. The points are provided as an Nx2 ndarray,
+        the first column giving the x, the second column giving the y coordinates of the points.
     orientation : {'cw', 'ccw'}, optional
-        Clockwise ('cw') or counterclockwise ('ccw') orientation of the polygon.
+        Clockwise ('cw') or counterclockwise ('ccw') orientation of the surface boundary.
         The default is 'ccw'.
 
     Returns
     -------
     order : list
-        Order of the segments so that they form a polygon.
-    is_swapped : list
-        A list of bool with True value if the orientation of the corresponding segment had to be
-        swapped to form the polygon.
+        Order of the branches so that they form the boundary of a surface.
+    redirected : list
+        A list of bool with True value if the orientation of the corresponding branch had to be
+        swapped to form the surface boundary.
     polygon : ndarray
-        The resulting polygon, given as an Mx2 ndarray, where M is the number of unique points on
-        the polygon (i.e. only one end point is kept for two connecting segments).
+        The polygon formed by connecting the points of the branches along the boundary. It is given
+        given as an Mx2 ndarray, where M is the number of unique points on the boundary (i.e. only
+        one end point is kept for two connecting branches).
+        This auxiliary data is not essential as it can be restored from the set of branches,
+        and their ordering. However, it is computed as temporary data needed for determining the
+        orientation of the boundary.
 
     Examples
     --------
     >>> import numpy as np
-    >>> segments = [np.array([[1, 1], [1.5, 2], [2, 3]]), np.array([[1, 1], [-1, 2]]),
+    >>> branches = [np.array([[1, 1], [1.5, 2], [2, 3]]), np.array([[1, 1], [-1, 2]]),
     ... np.array([[1.5, -3], [2, 3]]), np.array([[1.5, -3], [-1, 2]])]
-    >>> order, redirected, polygon = segments2polygon(segments, orientation='cw')
+    >>> order, redirected, polygon = branches2boundary(branches, orientation='cw')
     >>> order
     [0, 2, 3, 1]
     >>> redirected
@@ -300,47 +303,48 @@ def segments2polygon(segments, orientation='ccw'):
            [-1. ,  2. ]])
 
     """
-    # The path is the collection of consecutively added segments. When there are no more segments
-    # to add, the path becomes the polygon. First, we identify the segments that form the polygon.
-    n_segment = len(segments)
-    redirected = [False for i in range(n_segment)]
-    # Start with an arbitrary segment, the first one
-    last_segment = 0  # index of the lastly added segment to the path
+    # The path is the collection of consecutively added branches. When there are no more branches
+    # to add, the path becomes the boundary of a surface.
+    # First, we identify the branches that form the boundary.
+    n_branch = len(branches)
+    redirected = [False for i in range(n_branch)]
+    # Start with an arbitrary branch, the first one
+    last_branch = 0  # index of the lastly added branch to the path
     order = [0]
-    first_vertex = segments[last_segment][0, :]
-    last_vertex = segments[last_segment][-1, :]
-    # Visit all vertices of the would-be polygon and find the chain of connecting segments
-    for vertex in range(n_segment - 1):
+    first_vertex = branches[last_branch][0, :]
+    last_vertex = branches[last_branch][-1, :]
+    # Visit all vertices of the would-be surface and find the chain of connecting branches
+    for vertex in range(n_branch - 1):
         if np.allclose(last_vertex, first_vertex):  # one complete cycle is finished
             break
-        # Search for segments connecting to the last vertex of the path
-        for segment_index, segment in enumerate(segments):
-            if segment_index == last_segment:  # exclude the last segment of the path
+        # Search for branches connecting to the last vertex of the path
+        for branch_index, branch in enumerate(branches):
+            if branch_index == last_branch:  # exclude the last branch of the path
                 continue
-            # Check if the first or second end point of the segment connects to the last vertex
-            first_endpoint = segment[0, :]
-            second_endpoint = segment[-1, :]
+            # Check if the first or second end point of the branch connects to the last vertex
+            first_endpoint = branch[0, :]
+            second_endpoint = branch[-1, :]
             vertex_connects_to_first_endpoint = np.allclose(first_endpoint, last_vertex)
             vertex_connects_to_second_endpoint = np.allclose(second_endpoint, last_vertex)
             if vertex_connects_to_first_endpoint or vertex_connects_to_second_endpoint:
-                order.append(segment_index)
-                last_segment = segment_index
+                order.append(branch_index)
+                last_branch = branch_index
             if vertex_connects_to_first_endpoint:
                 last_vertex = second_endpoint
                 break
             elif vertex_connects_to_second_endpoint:
                 last_vertex = first_endpoint
-                redirected[segment_index] = True  # change the orientation of the connecting segment
+                redirected[branch_index] = True  # change the orientation of the connecting branch
                 break
             # TODO: add checks against edge cases
 
-    # Create the polygon from the segments
+    # Polygonize the boundary branches so as to determine the orientation in the next step
     polygon = []
-    for segment_index in order:
-        segment = segments[segment_index].copy()
-        if redirected[segment_index]:
-            segment = np.flipud(segment)
-        polygon.append(segment[0:-1])
+    for branch_index in order:
+        branch = branches[branch_index].copy()
+        if redirected[branch_index]:
+            branch = np.flipud(branch)
+        polygon.append(branch[0:-1])
     polygon = np.vstack(polygon)
 
     # Handle the orientation of the polygon
@@ -420,7 +424,7 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=
         if region == -1:  # artificial outer region
             continue
         points_on_boundary = index_list(branch_coordinates, branches)
-        _, _, poly = segments2polygon(points_on_boundary, orientation)
+        _, _, poly = branches2boundary(points_on_boundary, orientation)
         if close:
             poly = np.vstack((poly, poly[0, :]))
         polygons[region] = poly

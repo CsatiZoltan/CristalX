@@ -14,6 +14,7 @@ from skimage.morphology import skeletonize
 from skimage.color import label2rgb
 from skan import Skeleton, summarize
 
+from grains import HAS_OCCT
 from .utils import toggle, index_list, non_unique
 
 

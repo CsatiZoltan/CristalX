@@ -4,8 +4,15 @@ import os.path as path
 
 import numpy as np
 import matplotlib.pyplot as plt
+from OCC.Display.SimpleGui import init_display
 
-from grains.geometry import polygonize, overlay_regions
+from grains.geometry import polygonize, overlay_regions, branch2spline
+
+# Create and plot a B-spline
+random = np.random.random((10, 2))
+spline = branch2spline(random, degree_max=11, degree_min=2, continuity='C0')
+display, start_display, add_menu, add_function_to_menu = init_display()
+display.DisplayShape(spline, update=True)
 
 # Use a sample image shipped with the code (https://stackoverflow.com/a/36476869/4892892)
 script_dir = path.dirname(__file__)  # absolute directory the script is in

@@ -13,6 +13,9 @@ from skimage.segmentation import find_boundaries
 from skimage.morphology import skeletonize
 from skimage.color import label2rgb
 from skan import Skeleton, summarize
+from OCC.gp import gp_Pnt
+from OCC.TColgp import TColgp_Array1OfPnt
+from OCC.GeomAPI import GeomAPI_PointsToBSpline
 
 from grains import HAS_OCCT
 from .utils import toggle, index_list, non_unique
@@ -434,6 +437,53 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=
     return polygons
 
 
+def branch2spline(branch, degree_min=3, degree_max=8, continuity='C2', tol=1e-3):
+    """Approximate a branch with a spline.
+
+    A branch is given by a set of points. This function lays a B-spline on these points.
+
+    Parameters
+    ----------
+    branch : ndarray
+        2D ndarray with N>=2 rows and 2 columns, representing the points on the branch, ordered
+        from one end point to the other. The first column gives the x, the second column gives the
+        the y coordinates of the points.
+    degree_min : int, optional
+        Minimum degree of the spline. The default is 3.
+    degree_max : int, optional
+        Maximum degree of the spline. The default is 8.
+    continuity : {'C0', 'G1', 'C1', 'G2', 'C2', 'C3', 'CN'}, optional
+        The continuity of the spline will be at least `continuity`. The default is 'C2'.
+        For their meanings, consult with
+        https://www.opencascade.com/doc/occt-7.4.0/refman/html/_geom_abs___shape_8hxx.html
+    tol : float, optional
+        The distance from the points to the spline will be lower than `tol`. The default is 1e-3.
+
+    Returns
+    -------
+    spline : Geom_BSplineCurve
+        For details on the resulting spline, see the OpenCASCADE documentation:
+        https://www.opencascade.com/doc/occt-7.4.0/refman/html/class_geom___b_spline_curve.html
+
+    Raises
+    ------
+    ValueError
+        If the minimum degree of the B-spline to be constructed is greater than its maximum degree.
+
+    """
+    if degree_min > degree_max:
+        raise ValueError('Minimum degree must not be lower than the maximum degree.')
+    # Create points from the input array that OCCT understands
+    n_point = np.size(branch, 0)
+    points = TColgp_Array1OfPnt(0, n_point-1)
+    for i in range(n_point):
+        points.SetValue(i, gp_Pnt(float(branch[i][0]), float(branch[i][1]), 0))
+    # Construct the spline
+    continuity = _spline_continuity_enum(continuity)
+    spline = GeomAPI_PointsToBSpline(points, degree_min, degree_max, continuity, tol).Curve()
+    return spline
+
+
 def plot_polygon(vertices, **kwargs):
     """Plots a polygon.
 
@@ -509,6 +559,40 @@ def overlay_regions(label_image, polygons, axes=None):
     axes.set_axis_off()
     plt.tight_layout()
     return axes
+
+
+def _spline_continuity_enum(continuity):
+    """Enumeration value corresponding to the continuity of a B-spline.
+
+    Parameters
+    ----------
+    continuity : {'C0', 'G1', 'C1', 'G2', 'C2', 'C3', 'CN'}
+        Continuity of the B-spline.
+
+    Returns
+    -------
+    enum : int
+        Integer value corresponding to continuity key in the OpenCASCADE API:
+        https://www.opencascade.com/doc/occt-7.4.0/refman/html/_geom_abs___shape_8hxx.html
+
+    """
+    if continuity == 'C0':
+        enum = 0
+    elif continuity == 'G1':
+        enum = 1
+    elif continuity == 'C1':
+        enum = 1
+    elif continuity == 'G2':
+        enum = 3
+    elif continuity == 'C2':
+        enum = 4
+    elif continuity == 'C3':
+        enum = 5
+    elif continuity == 'CN':
+        enum = 6
+    else:
+        raise ValueError('Choose one of {"C0", "G1", "C1", "G2", "C2", "C3", "CN"}.')
+    return enum
 
 
 if __name__ == "__main__":

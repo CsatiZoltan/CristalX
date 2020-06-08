@@ -4,9 +4,13 @@ import os.path as path
 
 import numpy as np
 import matplotlib.pyplot as plt
-from OCC.Display.SimpleGui import init_display
 
+from grains import HAS_OCCT
 from grains.geometry import polygonize, overlay_regions, fit_spline
+if HAS_OCCT:
+    from OCC.Display.SimpleGui import init_display
+else:
+    raise ImportError('PythonOCC is required for this script to run.')
 
 # Create and plot a B-spline
 random = np.random.random((10, 2))

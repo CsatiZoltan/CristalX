@@ -4,7 +4,16 @@
 This module contains functions to provide geometrical descriptions of a label image.
 Each labelled region is turned to a surface. This allows mesh generators to work on
 the geometry instead of an image, thereby creating good quality meshes.
+
+The following functions require PythonOCC version 0.18 to be installed to allow spline
+manipulations:
+
+- `fit_spline`
+- `branches2spline`
+
 """
+
+import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,11 +22,16 @@ from skimage.segmentation import find_boundaries
 from skimage.morphology import skeletonize
 from skimage.color import label2rgb
 from skan import Skeleton, summarize
-from OCC.gp import gp_Pnt
-from OCC.TColgp import TColgp_Array1OfPnt
-from OCC.GeomAPI import GeomAPI_PointsToBSpline
 
 from grains import HAS_OCCT
+
+if HAS_OCCT:
+    from OCC.gp import gp_Pnt
+    from OCC.TColgp import TColgp_Array1OfPnt
+    from OCC.GeomAPI import GeomAPI_PointsToBSpline
+else:
+    warnings.warn('PythonOCC is not available. Some functions cannot be used.', ImportWarning)
+
 from .utils import toggle, index_list, non_unique
 
 

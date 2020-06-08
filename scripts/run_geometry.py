@@ -6,11 +6,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from OCC.Display.SimpleGui import init_display
 
-from grains.geometry import polygonize, overlay_regions, branch2spline
+from grains.geometry import polygonize, overlay_regions, fit_spline
 
 # Create and plot a B-spline
 random = np.random.random((10, 2))
-spline = branch2spline(random, degree_max=11, degree_min=2, continuity='C0')
+spline = fit_spline(random, degree_max=11, degree_min=2, continuity='C0')
 display, start_display, add_menu, add_function_to_menu = init_display()
 display.DisplayShape(spline, update=True)
 

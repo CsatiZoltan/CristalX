@@ -437,15 +437,13 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=
     return polygons
 
 
-def branch2spline(branch, degree_min=3, degree_max=8, continuity='C2', tol=1e-3):
-    """Approximate a branch with a spline.
-
-    A branch is given by a set of points. This function lays a B-spline on these points.
+def fit_spline(points, degree_min=3, degree_max=8, continuity='C2', tol=1e-3):
+    """Approximate a set of points on the plane with a B-spline.
 
     Parameters
     ----------
-    branch : ndarray
-        2D ndarray with N>=2 rows and 2 columns, representing the points on the branch, ordered
+    points : ndarray
+        2D ndarray with N>=2 rows and 2 columns, representing the points on the plane, ordered
         from one end point to the other. The first column gives the x, the second column gives the
         the y coordinates of the points.
     degree_min : int, optional
@@ -474,13 +472,13 @@ def branch2spline(branch, degree_min=3, degree_max=8, continuity='C2', tol=1e-3)
     if degree_min > degree_max:
         raise ValueError('Minimum degree must not be lower than the maximum degree.')
     # Create points from the input array that OCCT understands
-    n_point = np.size(branch, 0)
-    points = TColgp_Array1OfPnt(0, n_point-1)
+    n_point = np.size(points, 0)
+    pts = TColgp_Array1OfPnt(0, n_point-1)
     for i in range(n_point):
-        points.SetValue(i, gp_Pnt(float(branch[i][0]), float(branch[i][1]), 0))
+        pts.SetValue(i, gp_Pnt(float(points[i][0]), float(points[i][1]), 0))
     # Construct the spline
     continuity = _spline_continuity_enum(continuity)
-    spline = GeomAPI_PointsToBSpline(points, degree_min, degree_max, continuity, tol).Curve()
+    spline = GeomAPI_PointsToBSpline(pts, degree_min, degree_max, continuity, tol).Curve()
     return spline
 
 

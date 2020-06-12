@@ -13,6 +13,7 @@ manipulations:
 
 """
 
+import os
 import warnings
 
 import numpy as np
@@ -29,6 +30,9 @@ if HAS_OCCT:
     from OCC.gp import gp_Pnt
     from OCC.TColgp import TColgp_Array1OfPnt
     from OCC.GeomAPI import GeomAPI_PointsToBSpline
+    from OCC.STEPControl import STEPControl_Writer, STEPControl_AsIs
+    from OCC.Interface import Interface_Static_SetCVal
+    from OCC.IFSelect import IFSelect_RetDone
 else:
     warnings.warn('PythonOCC is not available. Some functions cannot be used.', ImportWarning)
 
@@ -525,6 +529,46 @@ def fit_spline(points, degree_min=3, degree_max=8, continuity='C2', tol=1e-3):
     continuity = _spline_continuity_enum(continuity)
     spline = GeomAPI_PointsToBSpline(pts, degree_min, degree_max, continuity, tol).Curve()
     return spline
+
+
+def write_step_file(shape, filename, application_protocol='AP203'):
+    """ Exports a shape to a STEP file.
+
+    Parameters
+    ----------
+    shape : TopoDS_Shape
+        Shape to be exported, an object of the TopoDS_Shape class or one of its subclasses. See
+        https://www.opencascade.com/doc/occt-7.4.0/refman/html/class_topo_d_s___shape.html
+    filename : str
+        Name of the file the shape is saved as.
+    application_protocol : {'AP203', 'AP214IS', 'AP242DIS'}, optional
+        Version of schema used for the output STEP file. The default is 'AP203'.
+
+    Notes
+    -----
+    For details on how to read and write STEP files, see the documentation on
+    https://dev.opencascade.org/doc/overview/html/occt_user_guides__step.html.
+
+    """
+    if shape.IsNull():
+        raise AssertionError('Shape is null.')
+    if application_protocol not in ['AP203', 'AP214IS', 'AP242DIS']:
+        raise ValueError('Application protocol must be one of {"AP203", "AP214IS", "AP242DIS"}.')
+    if os.path.isfile(filename):
+        warnings.warn('File already exists and will be replaced.', RuntimeWarning)
+
+    # Create and initialize the STEP exporter
+    step_writer = STEPControl_Writer()
+    Interface_Static_SetCVal("write.step.schema", application_protocol)
+
+    # Transfer shape and write file
+    step_writer.Transfer(shape, STEPControl_AsIs)
+    status = step_writer.Write(filename)
+
+    if status != IFSelect_RetDone:
+        raise IOError('Error while writing shape to STEP file.')
+    if not os.path.isfile(filename):
+        raise IOError('File was not saved.')
 
 
 def plot_polygon(vertices, **kwargs):

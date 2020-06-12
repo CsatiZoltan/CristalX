@@ -451,8 +451,39 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=
     return polygons
 
 
+def branches2splines(branches, degree_min=3, degree_max=8, continuity='C2', tol=1e-3):
+    """Lays splines on branches.
+
+    Parameters
+    ----------
+    branches : list
+        Each element of the list gives N>=2 points on the branch, ordered from one end point to the
+        other. If N=2, the two end points are meant. The points are provided as an Nx2 ndarray,
+        the first column giving the x, the second column giving the y coordinates of the points.
+
+    Other Parameters
+    ----------------
+    degree_min, degree_max, continuity, tol
+        See the :py:func:`fit_spline` function.
+
+    Returns
+    -------
+    list
+        Each member of the list is a `Geom_BSplineCurve` object, the B-spline approximation of
+        the corresponding input branch.
+        For details on the resulting spline, see the OpenCASCADE documentation:
+        https://www.opencascade.com/doc/occt-7.4.0/refman/html/class_geom___b_spline_curve.html
+
+    See Also
+    --------
+    fit_spline
+
+    """
+    return [fit_spline(branch, degree_min, degree_max, continuity, tol) for branch in branches]
+
+
 def fit_spline(points, degree_min=3, degree_max=8, continuity='C2', tol=1e-3):
-    """Approximate a set of points on the plane with a B-spline.
+    """Approximates a set of points on the plane with a B-spline.
 
     Parameters
     ----------
@@ -593,7 +624,7 @@ def _spline_continuity_enum(continuity):
     elif continuity == 'G1':
         enum = 1
     elif continuity == 'C1':
-        enum = 1
+        enum = 2
     elif continuity == 'G2':
         enum = 3
     elif continuity == 'C2':

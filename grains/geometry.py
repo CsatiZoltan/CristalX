@@ -378,6 +378,44 @@ def branches2boundary(branches, orientation='ccw'):
     return order, redirected, polygon
 
 
+def region_as_polygon(branches, orientation='ccw', close='False'):
+    """Represents a region as a polygon.
+
+    Based on the combined topological-geometrical (intermediate) representation of the regions,
+    (done by :py:func:`skeleton2regions`), this function provides a fully geometrical description
+    of a region.
+
+    Parameters
+    ----------
+    branches : list
+        Each element of the list gives N>=2 points on the branch, ordered from one end point to the
+        other. If N=2, the two end points are meant. The points are provided as an Nx2 ndarray,
+        the first column giving the x, the second column giving the y coordinates of the points.
+        The branches are not necessarily ordered.
+    orientation : {'cw', 'ccw'}, optional
+        Clockwise ('cw') or counterclockwise ('ccw') orientation of the polygons.
+        The default is 'ccw'.
+    close : bool, optional
+        When True, one vertex in the polygons is repeated to indicate that the polygons are
+        indeed closed. The default is False.
+
+    Returns
+    -------
+    polygon : ndarray
+        The resulting polygon, given as an Mx2 ndarray, where M is the number of unique points on
+        the polygon (i.e. only one end point is kept for two connecting branches).
+
+    See Also
+    --------
+    skeleton2regions
+
+    """
+    _, _, polygon = branches2boundary(branches, orientation)
+    if close:
+        polygon = np.vstack((polygon, polygon[0, :]))
+    return polygon
+
+
 def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=2,
                orientation='ccw', close=False):
     """Polygon representation of a label image.
@@ -410,8 +448,9 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=
 
     See Also
     --------
+    build_skeleton
     skeleton2regions
-    segments2polygon
+    region_as_polygon
 
     Examples
     --------
@@ -446,9 +485,8 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=
         if region == -1:  # artificial outer region
             continue
         points_on_boundary = index_list(branch_coordinates, branches)
-        _, _, poly = branches2boundary(points_on_boundary, orientation)
-        if close:
-            poly = np.vstack((poly, poly[0, :]))
+        poly = region_as_polygon(points_on_boundary, orientation, close)
+        plot_polygon(poly)
         polygons[region] = poly
     # overlay_skeleton_networkx(S.graph, S.coordinates, image=label_image)
     plt.show()

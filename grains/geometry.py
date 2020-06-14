@@ -36,8 +36,6 @@ if HAS_OCCT:
     from OCC.Interface import Interface_Static_SetCVal
     from OCC.IFSelect import IFSelect_RetDone
     from OCC.Display.SimpleGui import init_display
-
-    display, start_display, add_menu, add_function_to_menu = init_display()
 else:
     warnings.warn('PythonOCC is not available. Some functions cannot be used.', ImportWarning)
 
@@ -679,6 +677,7 @@ def splinegonize(label_image, connectivity=1, detect_boundaries=True, look_aroun
     ...   [2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]],
     ...  dtype=np.int8)
     >>> splinegons, _ = splinegonize(test_image, connectivity=1, tol=0.1)
+    >>> plot_splinegons(list(splinegons.values()))
 
     """
 
@@ -696,12 +695,36 @@ def splinegonize(label_image, connectivity=1, detect_boundaries=True, look_aroun
             continue
         boundary_splines = index_list(splines, branches)
         splinegon, boundary = region_as_splinegon(boundary_splines)
-        # Plot the faces
-        display.DisplayShape(splinegon, update=True)
         # Save the created regions and their boundaries
         splinegons[region] = splinegon
         boundaries[region] = boundary
     return splinegons, boundaries
+
+
+def plot_splinegons(splinegons, boundaries=None):
+    """Plots splinegons.
+
+    Parameters
+    ----------
+    splinegons : list
+        Each member of the list is a `TopoDS_Face` object, the surface of a splinegon.
+    boundaries : list, optional
+        Each member of the list is a `TopoDS_Wire` object, the boundary of a splinegon.
+
+    Returns
+    -------
+    None
+
+    See Also
+    --------
+    splinegonize
+
+    """
+    display, start_display, add_menu, add_function_to_menu = init_display()
+    # display.default_drawer.SetFaceBoundaryDraw(False)
+    for splinegon in splinegons:
+        # Plot the faces
+        display.DisplayShape(splinegon, update=True)
 
 
 def write_step_file(shape, filename, application_protocol='AP203'):

@@ -30,6 +30,8 @@ if HAS_OCCT:
     from OCC.gp import gp_Pnt
     from OCC.TColgp import TColgp_Array1OfPnt
     from OCC.GeomAPI import GeomAPI_PointsToBSpline
+    from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakeEdge, \
+        BRepBuilderAPI_MakeWire
     from OCC.STEPControl import STEPControl_Writer, STEPControl_AsIs
     from OCC.Interface import Interface_Static_SetCVal
     from OCC.IFSelect import IFSelect_RetDone
@@ -569,16 +571,62 @@ def fit_spline(points, degree_min=3, degree_max=8, continuity='C2', tol=1e-3):
     return spline
 
 
+def region_as_splinegon(boundary_splines):
+    """Represents a region as a splinegon.
+
+    Based on the combined topological-geometrical (intermediate) representation of the regions,
+    (done by :py:func:`skeleton2regions`), this function provides a fully geometrical description
+    of a region.
+
+    Parameters
+    ----------
+    boundary_splines : list
+        Each element of the list is a `Handle_Geom_BSplineCurve` object, giving a reference to the
+        B-splines bounding the region. The splines are not necessarily ordered.
+
+    Returns
+    -------
+    splinegon : TopoDS_Face
+        The resulting splinegon (surface). For details on the object, see the OpenCASCADE API:
+        https://www.opencascade.com/doc/occt-7.4.0/refman/html/class_topo_d_s___face.html
+    boundary : TopoDS_Wire
+        The boundary of the splinegon. For details on the resulting object, see the OpenCASCADE API:
+        https://www.opencascade.com/doc/occt-7.4.0/refman/html/class_topo_d_s___wire.html
+
+    See Also
+    --------
+    skeleton2regions
+    fit_spline
+
+    Notes
+    -----
+    The syntax `Handle_classname` in PythonOCC corresponds to wrapping the object of class
+    `classname` with a smart pointer. In the C++ interface, it is done by a template:
+    `Handle<classname>`.
+
+    """
+    # Combine the splines so that they form the boundary (a collection of joining splines)
+    boundary = BRepBuilderAPI_MakeWire()
+    for spline in boundary_splines:
+        edge = BRepBuilderAPI_MakeEdge(spline).Edge()
+        boundary.Add(edge)
+        _wire_error(boundary.Error())
+    # The planar surface (face) is stretched by the wire
+    splinegon = BRepBuilderAPI_MakeFace(boundary.Wire())
+    _face_error(splinegon.Error())
+    return splinegon.Face(), boundary.Wire()
+
+
 def write_step_file(shape, filename, application_protocol='AP203'):
     """ Exports a shape to a STEP file.
 
     Parameters
     ----------
     shape : TopoDS_Shape
-        Shape to be exported, an object of the TopoDS_Shape class or one of its subclasses. See
+        Shape to be exported, an object of the `TopoDS_Shape` class or one of its subclasses. See
         https://www.opencascade.com/doc/occt-7.4.0/refman/html/class_topo_d_s___shape.html
     filename : str
-        Name of the file the shape is saved as.
+        Name of the file the shape is saved into.
     application_protocol : {'AP203', 'AP214IS', 'AP242DIS'}, optional
         Version of schema used for the output STEP file. The default is 'AP203'.
 
@@ -718,6 +766,74 @@ def _spline_continuity_enum(continuity):
     else:
         raise ValueError('Choose one of {"C0", "G1", "C1", "G2", "C2", "C3", "CN"}.')
     return enum
+
+
+def _wire_error(error_code):
+    """Indicates the outcome of the wire construction.
+
+    Parameters
+    ----------
+    error_code : int
+        Error code returned by the `Error` method of `BRepBuilderAPI_MakeWire`.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If the error code is 1, 2 or 3. See the OpenCASCADE API:
+        https://www.opencascade.com/doc/occt-7.4.0/refman/html/_b_rep_builder_a_p_i___wire_error_8hxx.html
+        The exception is raised within this function, as an incompatible wire makes it
+        impossible to construct a valid surface.
+
+    """
+    if error_code == 0:
+        pass  # No error occurred. The wire is correctly built.
+    elif error_code == 1:
+        raise ValueError('Empty constructor was used. The wire does not yet exist.')
+    elif error_code == 2:
+        raise ValueError('Disconnected wire. The last edge you attempted to add was not '
+                         'connected to the wire.')
+    elif error_code == 3:
+        raise ValueError('Non-manifold wire. The wire has singularity.')
+    else:
+        raise ValueError('Error code not recognized. It must be one of the following: 0, 1, 2, 3.')
+
+
+def _face_error(error_code):
+    """Indicates the outcome of the face construction.
+
+    Parameters
+    ----------
+    error_code : int
+        Error code returned by the `Error` method of `BRepBuilderAPI_MakeFace`.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If the error code is 1, 2 or 3. See the OpenCASCADE API:
+        https://www.opencascade.com/doc/occt-7.4.0/refman/html/_b_rep_builder_a_p_i___face_error_8hxx.html
+        The exception is raised within this function, as an incompatible wire makes it
+        impossible to construct a valid surface.
+
+    """
+    if error_code == 0:
+        pass  # No error occurred. The wire is correctly built.
+    elif error_code == 1:
+        raise ValueError('Empty constructor was used. The wire does not yet exist.')
+    elif error_code == 2:
+        raise ValueError('Disconnected wire. The last edge you attempted to add was not '
+                         'connected to the wire.')
+    elif error_code == 3:
+        raise ValueError('Non-manifold wire. The wire has singularity.')
+    else:
+        raise ValueError('Error code not recognized. It must be one of the following: 0, 1, 2, 3.')
 
 
 if __name__ == "__main__":

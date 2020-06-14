@@ -32,6 +32,8 @@ if HAS_OCCT:
     from OCC.GeomAPI import GeomAPI_PointsToBSpline
     from OCC.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakeEdge, \
         BRepBuilderAPI_MakeWire
+    from OCC.TopoDS import TopoDS_Compound
+    from OCC.BRep import BRep_Builder
     from OCC.STEPControl import STEPControl_Writer, STEPControl_AsIs
     from OCC.Interface import Interface_Static_SetCVal
     from OCC.IFSelect import IFSelect_RetDone
@@ -699,6 +701,39 @@ def splinegonize(label_image, connectivity=1, detect_boundaries=True, look_aroun
         splinegons[region] = splinegon
         boundaries[region] = boundary
     return splinegons, boundaries
+
+
+def regions2step(splinegons, filename, application_protocol='AP203'):
+    """Writes splinegon regions to a STEP file.
+
+    Parameters
+    ----------
+    splinegons : list
+        Each member of the list is a `TopoDS_Face` object, the surface of a region.
+    filename : str
+        Name of the file the regions are saved into.
+    application_protocol : {'AP203', 'AP214IS', 'AP242DIS'}, optional
+        Version of schema used for the output STEP file. The default is 'AP203'.
+
+    Returns
+    -------
+    None
+
+    See Also
+    --------
+    splinegonize
+    write_step_file
+
+    """
+    # Initialize a container that we will populate with the splinegons
+    builder = BRep_Builder()
+    compound = TopoDS_Compound()
+    builder.MakeCompound(compound)
+    # Combine multiple faces
+    for splinegon in splinegons:
+        builder.Add(compound, splinegon)
+    # Write to STEP file
+    write_step_file(compound, filename, application_protocol)
 
 
 def plot_splinegons(splinegons, boundaries=None):

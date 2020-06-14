@@ -35,6 +35,9 @@ if HAS_OCCT:
     from OCC.STEPControl import STEPControl_Writer, STEPControl_AsIs
     from OCC.Interface import Interface_Static_SetCVal
     from OCC.IFSelect import IFSelect_RetDone
+    from OCC.Display.SimpleGui import init_display
+
+    display, start_display, add_menu, add_function_to_menu = init_display()
 else:
     warnings.warn('PythonOCC is not available. Some functions cannot be used.', ImportWarning)
 
@@ -615,6 +618,90 @@ def region_as_splinegon(boundary_splines):
     splinegon = BRepBuilderAPI_MakeFace(boundary.Wire())
     _face_error(splinegon.Error())
     return splinegon.Face(), boundary.Wire()
+
+
+def splinegonize(label_image, connectivity=1, detect_boundaries=True, look_around=2,
+                 degree_min=3, degree_max=8, continuity='C2', tol=1e-4):
+    """Polygon representation of a label image.
+
+    Parameters
+    ----------
+    label_image : 2D ndarray with signed integer entries
+        Label image, representing a segmented image.
+    connectivity : {1,2}, optional
+        A connectivity of 1 (default) means pixels sharing an edge will be considered neighbors.
+        A connectivity of 2 means pixels sharing a corner will be considered neighbors.
+    detect_boundaries : bool, optional
+        When True, the image boundaries will be treated as part of the skeleton. This allows
+        identifying boundary regions in the `skeleton2regions` function. The default is True.
+    look_around : int, optional
+        A junction is considered part of a region if it is at most `look_around` pixel far from it.
+        The default is 2. For further details, see the Notes below.
+
+    Other Parameters
+    ----------------
+    degree_min, degree_max, continuity, tol
+        See the :py:func:`fit_spline` function.
+
+    Returns
+    -------
+    splinegons : dict
+        The keys in the dictionary correspond to the labels of the input image, while the values
+        are `TopoDS_Face` objects, the surfaces of the regions.
+    boundaries : dict
+        The keys in the dictionary correspond to the labels of the input image, while the values
+        are `TopoDS_Wire` objects, the boundaries of the regions.
+
+    See Also
+    --------
+    build_skeleton
+    skeleton2regions
+    region_as_splinegon
+
+    Examples
+    --------
+    >>> test_image = np.array([
+    ...   [1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    ...   [2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]],
+    ...  dtype=np.int8)
+    >>> splinegons, _ = splinegonize(test_image, connectivity=1, tol=0.1)
+
+    """
+
+    # Build the skeleton network from the label image
+    S = build_skeleton(label_image, connectivity, detect_boundaries)
+    # Identify the regions from the skeleton
+    region_branches, branch_coordinates, _ = skeleton2regions(S, look_around)
+    # Approximate each branch with a B-spline
+    splines = branches2splines(branch_coordinates, degree_min, degree_max, continuity, tol)
+    # Represent each region as a splinegon
+    splinegons = {}
+    boundaries = {}
+    for region, branches in region_branches.items():
+        if region == -1:  # artificial outer region
+            continue
+        boundary_splines = index_list(splines, branches)
+        splinegon, boundary = region_as_splinegon(boundary_splines)
+        # Plot the faces
+        display.DisplayShape(splinegon, update=True)
+        # Save the created regions and their boundaries
+        splinegons[region] = splinegon
+        boundaries[region] = boundary
+    return splinegons, boundaries
 
 
 def write_step_file(shape, filename, application_protocol='AP203'):

@@ -760,6 +760,7 @@ def plot_splinegons(splinegons, boundaries=None):
     for splinegon in splinegons:
         # Plot the faces
         display.DisplayShape(splinegon, update=True)
+    input('Press any key to exit...')
 
 
 def write_step_file(shape, filename, application_protocol='AP203'):

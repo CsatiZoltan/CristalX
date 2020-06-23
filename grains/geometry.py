@@ -585,7 +585,9 @@ def region_as_splinegon(boundary_splines):
     ----------
     boundary_splines : list
         Each element of the list is a `Handle_Geom_BSplineCurve` object, giving a reference to the
-        B-splines bounding the region. The splines are not necessarily ordered.
+        B-splines bounding the region. The splines must either be ordered (see
+        :py:func:`branches2boundary`) or they must appear in an order such that the n-th spline in
+        the list can be connected to one of the first n-1 splines in the list.
 
     Returns
     -------
@@ -695,8 +697,12 @@ def splinegonize(label_image, connectivity=1, detect_boundaries=True, look_aroun
     for region, branches in region_branches.items():
         if region == -1:  # artificial outer region
             continue
+        # Splines that form the boundary of the current region
         boundary_splines = index_list(splines, branches)
-        splinegon, boundary = region_as_splinegon(boundary_splines)
+        # Orient the boundary so that the region surface can be defined
+        order, _, _, = branches2boundary(index_list(branch_coordinates, branches))
+        # Construct the surface and the boundary of the region
+        splinegon, boundary = region_as_splinegon(index_list(boundary_splines, order))
         # Save the created regions and their boundaries
         splinegons[region] = splinegon
         boundaries[region] = boundary

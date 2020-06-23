@@ -969,23 +969,23 @@ def _face_error(error_code):
     Raises
     ------
     ValueError
-        If the error code is 1, 2 or 3. See the OpenCASCADE API:
+        If the error code is 1, 2, 3 or 4. See the OpenCASCADE API:
         https://www.opencascade.com/doc/occt-7.4.0/refman/html/_b_rep_builder_a_p_i___face_error_8hxx.html
-        The exception is raised within this function, as an incompatible wire makes it
-        impossible to construct a valid surface.
+        The exception is raised within this function if the face could not be created.
 
     """
     if error_code == 0:
-        pass  # No error occurred. The wire is correctly built.
+        pass  # No error occurred. The face is correctly built.
     elif error_code == 1:
-        raise ValueError('Empty constructor was used. The wire does not yet exist.')
+        raise ValueError('Empty constructor was used. The face does not yet exist.')
     elif error_code == 2:
-        raise ValueError('Disconnected wire. The last edge you attempted to add was not '
-                         'connected to the wire.')
+        raise ValueError('The face cannot be constructed from a non-planar wire.')
     elif error_code == 3:
-        raise ValueError('Non-manifold wire. The wire has singularity.')
+        raise ValueError('Curve projection failed.')
+    elif error_code == 4:
+        raise ValueError('The parameters given to limit the surface are out of its bounds.')
     else:
-        raise ValueError('Error code not recognized. It must be one of the following: 0, 1, 2, 3.')
+        raise ValueError('Error code not recognized. It must be one of the following: 0, 1, 2, 3, 4.')
 
 
 if __name__ == "__main__":

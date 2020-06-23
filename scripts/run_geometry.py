@@ -25,10 +25,10 @@ ax = overlay_regions(test_image, polygons)
 plt.show()
 
 # Splinegon representation of the label image
-splinegons, _ = splinegonize(test_image, connectivity=1, look_around=4, degree_min=3,
-                             degree_max=5, continuity='C2', tol=10)
+splinegons, _ = splinegonize(test_image, connectivity=1, look_around=2, degree_min=3,
+                             degree_max=3, continuity='C0', tol=1)
 # Plot the splinegonized regions
-plot_splinegons(list(splinegons.values()))
+plot_splinegons(list(splinegons.values()), color=(0, 0, 1))
 # Write the geometry to a STEP file
 data_dir = path.join(script_dir, 'data')
 regions2step(list(splinegons.values()), path.join(data_dir, 'microstructure.stp'))

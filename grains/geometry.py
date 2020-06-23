@@ -38,6 +38,7 @@ if HAS_OCCT:
     from OCC.Interface import Interface_Static_SetCVal
     from OCC.IFSelect import IFSelect_RetDone
     from OCC.Display.SimpleGui import init_display
+    from OCC.Display.OCCViewer import rgb_color
 else:
     warnings.warn('PythonOCC is not available. Some functions cannot be used.', ImportWarning)
 
@@ -742,15 +743,20 @@ def regions2step(splinegons, filename, application_protocol='AP203'):
     write_step_file(compound, filename, application_protocol)
 
 
-def plot_splinegons(splinegons, boundaries=None):
+def plot_splinegons(splinegons, transparency=0.5, color='random'):
     """Plots splinegons.
 
     Parameters
     ----------
     splinegons : list
         Each member of the list is a `TopoDS_Face` object, the surface of a splinegon.
-    boundaries : list, optional
-        Each member of the list is a `TopoDS_Wire` object, the boundary of a splinegon.
+    transparency : float, optional
+        The transparency value should be between 0 and 1. At 0, an object will be totally opaque,
+        and at 1, fully transparent.
+    color : tuple or str, optional
+        Color of the splinegons. Either 'random' to associate a random color for each splinegon
+        in the list `splinegons` or a 3-tuple with entries between 0 and 1 to give the same RGB
+        values to all the splinegons.
 
     Returns
     -------
@@ -763,10 +769,18 @@ def plot_splinegons(splinegons, boundaries=None):
     """
     display, start_display, add_menu, add_function_to_menu = init_display()
     # display.default_drawer.SetFaceBoundaryDraw(False)
-    for splinegon in splinegons:
+    # Check the format of the optional arguments
+    if not (0 <= transparency <= 1):
+        raise ValueError('Transparency must be in the interval [0, 1].')
+    if color != 'random':
+        # TODO: Check for format
+        col = rgb_color(*color)
+    for i, splinegon in enumerate(splinegons):
         # Plot the faces
-        display.DisplayShape(splinegon, update=True)
-    input('Press any key to exit...')
+        if color == 'random':
+            col = rgb_color(np.random.random(), np.random.random(), np.random.random())
+        display.DisplayShape(splinegon, update=True, transparency=transparency, color=col)
+    start_display()
 
 
 def write_step_file(shape, filename, application_protocol='AP203'):

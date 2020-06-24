@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# A temporary directory in which I collect some half-ready code
+/temp/

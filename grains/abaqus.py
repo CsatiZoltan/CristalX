@@ -238,6 +238,8 @@ class Material:
                     break
         if 'end' not in locals():  # input file ends with materials
             end = line_number
+        if 'begin' not in locals():  # input file does not contain materials
+            begin = line_number+1
         self.inp_file = inp_file
         self.materials = materials
         self.state['begin'] = begin
@@ -380,7 +382,7 @@ class Material:
         This is what the `show` method does.
 
         """
-        abaqus_format = []
+        abaqus_format = ['\n']
         for material_name, behaviors in self.materials.items():
             abaqus_format.append('*Material, name={0}\n'.format(material_name))
             for behavior_name, parameters in behaviors.items():
@@ -436,7 +438,7 @@ class Geometry:
         self.inp_file = ''
         self.state = {'begin': None, 'end': None, 'read': False}
         self.nodes = {}
-    
+
     def read(self, inp_file):
         """Reads material data from an Abaqus .inp file.
 

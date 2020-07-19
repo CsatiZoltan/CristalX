@@ -138,6 +138,41 @@ def flatten_list(nested_list):
     return [item for sublist in nested_list for item in sublist]
 
 
+def argsorted(sequence, reverse=False):
+    """Return the indices that would sort a list or a tuple.
+
+    Implementation is taken from https://stackoverflow.com/a/6979121/4892892.
+
+    Parameters
+    ----------
+    sequence : list, tuple
+        Input sequence in which the sorted indices to be found.
+    reverse : bool
+        If set to True, then the elements are sorted as if each comparison was reversed.
+
+    Returns
+    -------
+    list
+        List of indices that would sort the input list/tuple.
+
+    See Also
+    --------
+    sorted
+    numpy.argsort
+
+    Examples
+    --------
+    >>> argsorted([2, 1.1, 1.1])
+    [1, 2, 0]
+    >>> argsorted([2, 1.1, 1.1], reverse=True)
+    [0, 1, 2]
+    >>> argsorted(())
+    []
+
+    """
+    return sorted(range(len(sequence)), key=lambda k: sequence[k], reverse=reverse)
+
+
 def map_inplace(function, a_list):
     """Apply a function to each member of a list in-place.
 

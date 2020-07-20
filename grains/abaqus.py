@@ -352,6 +352,55 @@ class Material:
         with open(output_file, 'w') as target:
             target.write(''.join(new))
 
+    @staticmethod
+    def add_sections(inp_file, output_file=None):
+        """Adds section definitions to an Abaqus .inp file.
+
+        Defines properties for elements by associating materials to them. The element set
+        containing the elements for which the material behavior is being defined is assumed to
+        have the same name as that of the material. E.g. if materials with names `mat-1` and
+        `mat-2` exist, element sets with names `mat-1` and `mat-2` must also exist. If such
+        element sets do not exist, Abaqus will throw a warning and the section assignment will
+        not be successful.
+
+        Parameters
+        ----------
+        inp_file : str
+            Abaqus .inp file from which the materials should be removed.
+        output_file : str, optional
+            Output file name to write the modifications into.
+            If not given, the original file name is appended with '_mod'.
+
+        Returns
+        -------
+        None.
+
+        Notes
+        -----
+        If fine control is required for associating custom material names to custom element set
+        names, that can be done from the Abaqus GUI. The purpose of this method is automation
+        for large number of element sets, each associated to a (possibly distinct) material. In
+        that case, custom element set names are not reasonable any more, and having the same
+        names for the element sets and for the materials is completely meaningful.
+
+        """
+        with open(inp_file, 'r') as source:
+            a = Material()
+            a.read(inp_file)
+            old = source.readlines()
+        if a.state['begin'] == a.state['end'] + 1:  # input file does not contain materials
+            raise Exception('Material does not exist.')
+        sections = []
+        for material in a.materials.keys():
+            sections.append('*SOLID SECTION, ELSET={0}, MATERIAL={0}\n'.format(material))
+        new = old + sections
+        if not output_file:
+            name, extension = os.path.splitext(inp_file)
+            output_file = name + '_mod' + extension
+        validate_file(output_file, 'write')
+        with open(output_file, 'w') as target:
+            target.write(''.join(new))
+
     def show(self):
         """Shows material data as it appears in the Abaqus .inp file.
 
@@ -658,6 +707,7 @@ def validate_file(file, caller):
     else:
         raise Exception('Only the following methods are allowed to call '
                         'this function: "read"", "write" "create".')
+
 
 def extract(keyword):
     """Obtains Abaqus keyword and its parameters.

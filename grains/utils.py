@@ -173,31 +173,38 @@ def argsorted(sequence, reverse=False):
     return sorted(range(len(sequence)), key=lambda k: sequence[k], reverse=reverse)
 
 
-def map_inplace(function, a_list):
-    """Apply a function to each member of a list in-place.
+def map_inplace(function, __iterable):
+    """Apply a function to each member of an iterable in-place.
 
     Parameters
     ----------
     function : function object
-        Function to be applied to the entries of the list.
-    a_list : list
-        List.
+        Function to be applied to the entries of the iterable.
+    __iterable : iterable
+        Iterable.
 
     Notes
     -----
-    A list comprehension or functional tools work on iterators, thereby not modifying the
-    original container (https://stackoverflow.com/a/4148523/4892892). For in-place modification,
-    the conventional for loop approach is used (https://stackoverflow.com/a/4148525/4892892).
+    Comprehensions or functional tools work on iterators, thereby not modifying the original
+    container (https://stackoverflow.com/a/4148523/4892892). For in-place modification, the
+    conventional for loop approach is used (https://stackoverflow.com/a/4148525/4892892).
 
     Examples
     --------
     >>> lst = ['2', 2]; func = lambda x: x*2
     >>> map_inplace(func, lst); lst
     ['22', 4]
+    >>> lifespan = {'cat': 15, 'dog': 12}; die_early = lambda x: x/2
+    >>> map_inplace(die_early, lifespan); lifespan
+    {'cat': 7.5, 'dog': 6.0}
 
     """
-    for i in range(len(a_list)):
-        a_list[i] = function(a_list[i])
+    if type(__iterable) == dict:
+        for key, value in __iterable.items():
+            __iterable[key] = function(value)
+    else:
+        for i in range(len(__iterable)):
+            __iterable[i] = function(__iterable[i])
 
 
 def non_unique(array, axis=None):

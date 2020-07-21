@@ -192,6 +192,62 @@ def change_node_numbering(elements, nodes, orientation='ccw'):
     return reordered_elements
 
 
+def rotate_mesh(nodes, angle, point=(0, 0)):
+    """Rotates a 2D mesh about a given point by a given angle.
+
+    .. todo:: Also put it to the :py:mod:`grains.geometry` module (at least for rotating a single point).
+
+    Parameters
+    ----------
+    nodes : ndarray
+        2D numpy array with 2 columns, each row corresponding to a node, and the two columns
+        giving the Cartesian coordinates of the nodes.
+    angle : float
+        Angle of rotation, in radians.
+    point : list or tuple, optional
+        Coordinates of the point about which the mesh is rotated. If not given, it is the origin.
+
+    Returns
+    -------
+    rotated_nodes : ndarray
+        Same format as the input `nodes`, with the requested rotation.
+
+    Notes
+    -----
+    Rotating a point :math:`P` given by its coordinates in the global coordinate system as
+    :math:`P(x,y)` around a point :math:`A(x,y)` by an angle :math:`\\alpha` is done as follows.
+
+    1. The coordinates of :math:`P` in the local coordinate system, the origin of which is
+    :math:`A`, is expressed as
+
+    .. math::
+        P(x',y') = P(x,y) - A(x,y).
+
+    2. The rotation is performed in the local coordinate system as :math:`P'(x',y') = RP(x',y')`,
+    where :math:`R` is the rotation matrix:
+
+    .. math::
+        R = \\begin{pmatrix}
+            \\cos\\alpha & -\\sin\\alpha \\\\
+            \\sin\\alpha & \\hphantom{-}\\cos\\alpha
+            \\end{pmatrix}.
+
+    3. The rotated point :math:`P'` is expressed in the original (global) coordinate system:
+
+    .. math::
+        P'(x,y) = P'(x',y') + A(x,y).
+
+    """
+    rotation_matrix = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+    rotated_nodes = np.empty_like(nodes)
+    for i, node in enumerate(nodes):
+        node_local = node - point
+        rotated_node_local = rotation_matrix.dot(node_local)
+        rotated_node = rotated_node_local + point
+        rotated_nodes[i] = rotated_node
+    return rotated_nodes
+
+
 def write_inp(filename, nodes, elements, element_groups=None):
     """Writes an unstructured mesh to an Abaqus .inp file.
 

@@ -8,3 +8,10 @@ try:
     HAS_OCCT = True
 except ImportError:
     HAS_OCCT = False
+
+try:
+    import MEDLoader
+    HAS_MED = True
+except ImportError:
+    HAS_MED = False
+

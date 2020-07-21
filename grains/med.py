@@ -143,3 +143,67 @@ def get_elements(mesh, numbering='global'):
     else:
         raise ValueError('Unknown strategy. Choose either "global" or "group".')
     return elements, element_groups
+
+
+def write_inp(filename, nodes, elements, element_groups=None):
+    """Writes an unstructured mesh to an Abaqus .inp file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the mesh file.
+    nodes : ndarray
+        2D numpy array with 2 columns, each row corresponding to a node, and the two columns
+        giving the Cartesian coordinates of the nodes.
+    elements : dict
+        The keys in the dictionary are the group names, while the values are the element-node
+        connectivities in a 2D numpy array, in which each row corresponds to an element and the
+        columns are the nodes of the elements. It is assumed that all the elements have the same
+        number of nodes.
+    element_groups : dict, optional
+        The keys in the dictionary are the group names, while the values are list of integers,
+        giving the elements that belong to the particular group.
+
+
+    Returns
+    -------
+    None
+
+    See Also
+    --------
+    read_mesh
+    get_nodes
+    get_elements
+
+    """
+    # Node coordinates
+    inp_file = '*NODE\n'
+    for global_node_num, coordinate in enumerate(nodes, 1):
+        # TODO: avoid reallocation by temporary strings as done below
+        inp_file += str(global_node_num) + ', ' + str(list(coordinate))[1:-1] + '\n'
+
+    # Element-node connectivities
+    element_type = 'CPS3'  # 3-node linear plane stress element; can be changed in Abaqus
+    inp_file += '*ELEMENT, TYPE=' + element_type + '\n'
+    global_elem_num = 0
+    for elem_nodes in elements:
+        global_elem_num += 1
+        # TODO: avoid reallocation by temporary strings as done below
+        inp_file += str(global_elem_num) + ', ' + str(list(elem_nodes+1))[1:-1] + '\n'
+
+    # Element groups
+    element_sets = ''  # Grow a new string to avoid extensive reallocation
+    for group_name, elements in element_groups.items():
+        element_set = ''  # grow a new string to avoid extensive reallocation
+        # Header
+        element_set += '\n*ELSET, ELSET=' + group_name + '\n'
+        # Elements belonging to this group
+        for i, element in enumerate(elements+1, 1):
+            element_set += str(element) + ', '
+            if i % 16 == 0:  # Abaqus allows at most 16 entries per line
+                element_set += '\n'
+        element_sets += element_set
+    inp_file += element_sets
+    # Write to file
+    with open(filename, 'w') as target:
+        target.write(inp_file)

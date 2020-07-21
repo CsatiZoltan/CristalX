@@ -116,6 +116,7 @@ def get_elements(mesh, numbering='global'):
     See Also
     --------
     get_nodes
+    change_node_numbering
 
     Notes
     -----
@@ -143,6 +144,52 @@ def get_elements(mesh, numbering='global'):
     else:
         raise ValueError('Unknown strategy. Choose either "global" or "group".')
     return elements, element_groups
+
+
+def change_node_numbering(elements, nodes, orientation='ccw'):
+    """Changes element node numbering.
+
+    Parameters
+    ----------
+    elements : ndarray
+        Element-node connectivities in a 2D numpy array, in which each row corresponds to an
+        element and the columns are the nodes of the elements. It is assumed that all the
+        elements have the same number of nodes.
+    nodes : ndarray
+        2D numpy array with 2 columns, each row corresponding to a node, and the two columns
+        giving the Cartesian coordinates of the nodes.
+    orientation : {'ccw', 'cw'}
+        Node numbering within an element, either `'ccw'` (counter-clockwise, default) or
+        `'cw'` (clock-wise).
+
+    Returns
+    -------
+    reordered_elements : ndarray
+        Same format as the input `elements`, with the requested node ordering.
+
+    Notes
+    -----
+    Supposed to be used with planar P1 or Q1 elements.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> change_node_numbering(np.array([0, 1, 2]), np.array([[1, 1], [3, 5], [7,3]]))
+    array([[2, 1, 0]])
+
+    """
+    if np.ndim(elements) == 1:  # single element, given as a vector
+        elements = elements.reshape((1, np.size(elements)))  # reshape to a matrix
+    if np.size(elements, 1) < 3:
+        raise Exception('Elements must have at least 3 nodes.')
+    reordered_elements = np.empty_like(elements, dtype=int)
+    for i, element_nodes in enumerate(elements):
+        coordinates = nodes[element_nodes]
+        signed_area = _polygon_area(list(coordinates[:, 0]), list(coordinates[:, 1]))
+        if (signed_area < 0 and orientation == 'ccw') or (signed_area > 0 and orientation == 'cw'):
+            element_nodes = element_nodes[::-1]
+        reordered_elements[i] = element_nodes
+    return reordered_elements
 
 
 def write_inp(filename, nodes, elements, element_groups=None):

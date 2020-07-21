@@ -207,3 +207,104 @@ def write_inp(filename, nodes, elements, element_groups=None):
     # Write to file
     with open(filename, 'w') as target:
         target.write(inp_file)
+
+
+def element_area(element, element_nodes, node_coordinates):
+    """Computes the area of an element.
+
+    Parameters
+    ----------
+    element : int
+        Element label.
+    element_nodes : ndarray
+        Element-node connectivities in a 2D numpy array, in which each row corresponds to an
+        element and the columns are the nodes of the elements. It is assumed that all the
+        elements have the same number of nodes.
+    node_coordinates : ndarray
+        2D numpy array with 2 columns, each row corresponding to a node, and the two columns
+        giving the Cartesian coordinates of the nodes.
+
+    Returns
+    -------
+    area : float
+        Area of the element.
+
+    See Also
+    --------
+    element_group_area
+
+    """
+    nodes = element_nodes[element]
+    coordinates = node_coordinates[nodes]
+    return _polygon_area(list(coordinates[:, 0]), list(coordinates[:, 1]))
+
+
+def element_group_area(group, element_groups, element_nodes, node_coordinates):
+    """Computes the area of an element group.
+
+    Parameters
+    ----------
+    group : str
+        Name of the element group
+    element_groups : dict
+        The keys in the dictionary are the group names, while the values are list of integers,
+        giving the elements that belong to the particular group.
+    element_nodes : ndarray
+        Element-node connectivities in a 2D numpy array, in which each row corresponds to an
+        element and the columns are the nodes of the elements. It is assumed that all the
+        elements have the same number of nodes.
+    node_coordinates : ndarray
+        2D numpy array with 2 columns, each row corresponding to a node, and the two columns
+        giving the Cartesian coordinates of the nodes.
+
+
+    Returns
+    -------
+    area : float
+        Area of the element group.
+
+    See Also
+    --------
+    element_area
+
+    """
+    area = 0
+    for element in element_groups[group]:
+        area += element_area(element, element_nodes, node_coordinates)
+    return area
+
+
+def _polygon_area(x, y):
+    """Computes the signed area of a non-self-intersecting, possibly concave, polygon.
+
+    Directly taken from http://rosettacode.org/wiki/Shoelace_formula_for_polygonal_area#Python
+
+    Parameters
+    ----------
+    x, y : list
+        Coordinates of the consecutive vertices of the polygon.
+
+    Returns
+    -------
+    float
+        Area of the polygon.
+
+    Warnings
+    --------
+    If numpy vectors are passed as inputs, the resulting area is incorrect! WHY?
+
+    Notes
+    -----
+    The code is not optimized for speed and for numerical stability. Intended to be used to compute
+    the area of finite element cells, in which case the numerical stability is not an issue
+    (unless the cell is degenerate). As this function is called possibly as many times as the
+    number of elements in the mesh, no input checking is performed.
+
+    Examples
+    --------
+    >>> _polygon_area([0, 1, 1], [0, 0, 1])
+    0.5
+
+    """
+    return 1/2*(sum(i*j for i, j in zip(x, y[1:]+y[:1])) -
+                sum(i*j for i, j in zip(x[1:]+x[:1], y)))

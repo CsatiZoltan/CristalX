@@ -1,6 +1,36 @@
+# -*- coding: utf-8 -*-
 """
-This module contains the Material class, responsible for managing materials
-and interfacing with Abaqus.
+This module allows to create and manipulate Abaqus input files, thereby providing automation.
+Note that it is not intended to be a complete API to Abaqus. If you want fine control over the
+whole Abaqus ecosystem, consult with the Abaqus Scripting Reference Guide (`ASRG`). However,
+`ASRG` needs Abaqus to be installed, moreover, you must use the Python interpreter embedded into
+Abaqus. That version of Python is very old even in the latest versions of Abaqus. Furthermore,
+if you need to use custom Python packages for your work, chances are high that they will not work
+with the embedded interpreter, and may even crash the installation. To use this module, no Abaqus
+installation is needed. In fact, only functions from the Python standard library are used.
+
+The documentation of Abaqus version 2017 is hosted on the following website:
+https://abaqus-docs.mit.edu/2017/English/SIMACAEEXCRefMap/simaexc-c-docproc.htm.
+Throughout the documentation of this module (:mod:`grains.abaqus`), we will make references to
+that website. If the links cease to exist, please let me know by
+`opening an issue <https://github.com/CsatiZoltan/Polycrystalline-microstructures/issues/new>`_.
+Alternatively, once you have registered, you can browse the documentation on the
+`official website <https://www.3ds.com/support/documentation/users-guides/>`_.
+
+Classes
+-------------
+.. autosummary::
+
+    Geometry
+    Material
+
+Functions
+-------------
+.. autosummary::
+
+    extract
+    validate_file
+
 """
 
 # TODO:
@@ -17,7 +47,7 @@ import re
 
 
 class Material:
-    """Add materials to an Abaqus input file.
+    """Adds, removes, modifies materials.
     Requirements: be able to
     - create an empty .inp file, containing only the materials
     - add materials to an existing .inp file
@@ -480,7 +510,7 @@ class Material:
 
 
 class Geometry:
-    """Modifies existing geometry.
+    """Geometrical operations on the mesh.
     """
 
     def __init__(self):

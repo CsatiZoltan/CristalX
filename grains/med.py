@@ -61,7 +61,7 @@ def read_mesh(filename):
 
 
 def get_nodes(mesh):
-    """Obtains the nodes of a mesh.
+    """Obtains the nodes and the node groups of a mesh.
 
     Parameters
     ----------
@@ -70,21 +70,33 @@ def get_nodes(mesh):
 
     Returns
     -------
-    ndarray
+    nodes : ndarray
         2D numpy array with 2 columns, each row corresponding to a node, and the two columns
         giving the Cartesian coordinates of the nodes.
+    node_groups : dict
+        The keys in the dictionary are the node group names, while the values are list of integers,
+        giving the nodes that belong to the particular group.
 
     See Also
     --------
-    get_elements
+    :func:`get_elements`,
+    `getGroupArr <https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/classMEDCoupling_1_1MEDFileMesh.html#a4398c05f015e52d0d380eb39c6e4b942>`_
 
     """
     # Get the coordinates of all the nodes in the mesh
-    return mesh.getCoords().toNumPyArray()
+    nodes = mesh.getCoords().toNumPyArray()
+    # Get the node groups
+    group_names = mesh.getGroupsOnSpecifiedLev(1)
+    node_groups = {}
+    for group_name in group_names:
+        node_groups[group_name] = mesh.getGroupArr(1, group_name).toNumPyArray()
+    return nodes, node_groups
 
 
 def get_elements(mesh, numbering='global'):
     """Obtains the elements for each group of a mesh.
+
+    Elements of the same dimension as the mesh are collected (e.g. faces for a 2D mesh).
 
     .. todo:: put those elements that do not belong to any group into an automatically created group
     .. todo:: support ordering `elements` in alphabetical order
@@ -110,8 +122,8 @@ def get_elements(mesh, numbering='global'):
         element and the columns are the nodes of the elements. It is assumed that all the
         elements have the same number of nodes.
     element_groups : dict
-        The keys in the dictionary are the group names, while the values are list of integers,
-        giving the elements that belong to the particular group.
+        The keys in the dictionary are the element group names, while the values are list of
+        integers, giving the elements that belong to the particular group.
 
     See Also
     --------
@@ -121,10 +133,21 @@ def get_elements(mesh, numbering='global'):
     Notes
     -----
     The element-node connectivities are read from the mesh. If you want to change the ordering
-    of the nodes, use the :py:func:`change_node_numbering` function.
+    of the nodes, use the :func:`change_node_numbering` function.
+
+    Both this and the :func:`get_nodes` function relies on `getGroupsOnSpecifiedLev
+    <https://docs.salome-platform.org/latest/dev/MEDCoupling/developer
+    /classMEDCoupling_1_1MEDFileMesh.html#a2d59097b6d14b95c7d2aeee9f39b0438>`_ to obtain the groups
+    based on a parameter, called `meshDimRelToMaxExt`. This parameter designates the relative
+    dimension of the mesh entities whose IDs are required. If it is 1, it denotes the nodes. If
+    0, entities of the same dimension as the mesh are meant (e.g. group of volumes for a 3D mesh,
+    or group of faces for a 2D mesh). When -1, entities of spatial dimension immediately below
+    that of the mesh are collected (e.g. group of faces for a 3D mesh, or group of edges for a
+    2D mesh). For -2, entities of two dimensions below that of the mesh are fetched (e.g. group of
+    edges for a 3D mesh).
 
     """
-    group_names = mesh.getGroupsNames()
+    group_names = mesh.getGroupsOnSpecifiedLev(0)
     n_element = mesh.getDistributionOfTypes(0)[1]
     elements = np.empty((n_element, 3), dtype=int)
     element_groups = {}
@@ -195,7 +218,7 @@ def change_node_numbering(elements, nodes, orientation='ccw'):
 def rotate_mesh(nodes, angle, point=(0, 0)):
     """Rotates a 2D mesh about a given point by a given angle.
 
-    .. todo:: Also put it to the :py:mod:`grains.geometry` module (at least for rotating a single point).
+    .. todo:: Also put it to the :mod:`grains.geometry` module (at least for rotating a single point).
 
     Parameters
     ----------
@@ -248,7 +271,7 @@ def rotate_mesh(nodes, angle, point=(0, 0)):
     return rotated_nodes
 
 
-def write_inp(filename, nodes, elements, element_groups=None):
+def write_inp(filename, nodes, elements, element_groups=None, node_groups=None):
     """Writes an unstructured mesh to an Abaqus .inp file.
 
     Parameters
@@ -266,6 +289,9 @@ def write_inp(filename, nodes, elements, element_groups=None):
     element_groups : dict, optional
         The keys in the dictionary are the group names, while the values are list of integers,
         giving the elements that belong to the particular group.
+    node_groups : dict, optional
+        The keys in the dictionary are the node group names, while the values are list of integers,
+        giving the nodes that belong to the particular group.
 
 
     Returns
@@ -307,6 +333,21 @@ def write_inp(filename, nodes, elements, element_groups=None):
                 element_set += '\n'
         element_sets += element_set
     inp_file += element_sets
+
+    # Node groups
+    node_sets = ''  # Grow a new string to avoid extensive reallocation
+    for group_name, nodes in node_groups.items():
+        node_set = ''  # grow a new string to avoid extensive reallocation
+        # Header
+        node_set += '\n*NSET, NSET=' + group_name + '\n'
+        # Nodes belonging to this group
+        for i, node in enumerate(nodes + 1, 1):
+            node_set += str(node) + ', '
+            if i % 16 == 0:  # Abaqus allows at most 16 entries per line
+                node_set += '\n'
+        node_sets += node_set
+    inp_file += node_sets
+
     # Write to file
     with open(filename, 'w') as target:
         target.write(inp_file)

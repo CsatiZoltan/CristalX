@@ -288,11 +288,10 @@ def write_inp(filename, nodes, elements, element_groups=None, node_groups=None):
     nodes : ndarray
         2D numpy array with 2 columns, each row corresponding to a node, and the two columns
         giving the Cartesian coordinates of the nodes.
-    elements : dict
-        The keys in the dictionary are the group names, while the values are the element-node
-        connectivities in a 2D numpy array, in which each row corresponds to an element and the
-        columns are the nodes of the elements. It is assumed that all the elements have the same
-        number of nodes.
+    elements : ndarray
+        Element-node connectivities in a 2D numpy array, in which each row corresponds to an
+        element and the columns are the nodes of the elements. It is assumed that all the
+        elements have the same number of nodes.
     element_groups : dict, optional
         The keys in the dictionary are the group names, while the values are list of integers,
         giving the elements that belong to the particular group.

@@ -125,6 +125,10 @@ def get_elements(mesh, numbering='global'):
         The keys in the dictionary are the element group names, while the values are list of
         integers, giving the elements that belong to the particular group.
 
+    Warnings
+    --------
+    Currently, elements that do not fit into any groups are discarded.
+
     See Also
     --------
     get_nodes
@@ -162,6 +166,9 @@ def get_elements(mesh, numbering='global'):
                 local_elements[j] = i
                 i += 1
             element_groups[group_name] = local_elements
+        if i < n_element:  # some elements are not part of any group
+            elements = elements[0:i]
+            warnings.warn('Elements that do not belong to any of the groups were discarded.')
     elif numbering == 'global':
         raise ValueError('Strategy not yet implemented.')
     else:

@@ -15,3 +15,9 @@ try:
 except ImportError:
     HAS_MED = False
 
+try:
+    import tables
+    HAS_TABLES = True
+except ImportError:
+    HAS_TABLES = False
+

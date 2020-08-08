@@ -1,0 +1,71 @@
+# -*- coding: utf-8 -*-
+from os import path
+from os.path import join
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+from grains import HAS_TABLES
+
+
+show_plots = True  # set to False to prevent from showing the plots
+
+# Directory where we read from and write to
+script_dir = path.dirname(__file__)  # absolute path to the directory the script is in
+data_dir = join(script_dir, 'data')
+
+# Options (https://stackoverflow.com/a/18633695/4892892,
+# https://tex.stackexchange.com/a/391078/119426)
+params = {'text.usetex': True,
+          'text.latex.preamble': [r'\usepackage{siunitx}'],  # just an example to include a package
+          'font.size': 16}
+plt.rcParams.update(params)
+# plt.rcParams
+
+dic_snapshot = join(data_dir, '1_dic_field.npy')
+if path.isfile(dic_snapshot):
+    u_restricted, v_restricted, _ = np.load(dic_snapshot, allow_pickle=True)
+else:
+    # Try to load it from the raw data
+    dic_data = join(data_dir, 'test.hdf')  # 6.3 GB, not committed to the Github repository
+    if path.isfile(dic_data):
+        if HAS_TABLES:
+            # Fetch the displacement field from the series of field measurements
+            import tables
+            h = tables.open_file(dic_data)
+            measurement = h.root.res
+            time = 350  # out of 400
+            u = measurement[time, :, :, 0]
+            v = measurement[time, :, :, 1]
+
+            # Show the axial strain
+            if show_plots:
+                plt.matshow(np.gradient(u)[1], interpolation='none', vmin=0, vmax=0.2)
+                cbar = plt.colorbar(orientation='horizontal', format='%.2f', aspect=100,
+                                    label=r'$\varepsilon_{xx}$')
+                cbar.ax.set_xlabel(r'$\varepsilon_{xx}$', fontsize=30)
+
+            # Crop data which belongs to the testing device (the indices were obtained using:
+            # `selected = plt.ginput(-1, timeout=-1))`
+            restricted_region = np.s_[time, 111:914, 5:1963, :]
+            u_component = np.s_[:, :, 0]
+            v_component = np.s_[:, :, 1]
+            u_restricted = measurement[restricted_region][u_component]
+            v_restricted = measurement[restricted_region][v_component]
+
+            # Save the displacement components
+            displacement_field = (u_restricted, v_restricted, 'Time step: 350 out of 400, '
+                                  'cropped: 111:914, 5:1963 out of dimensions 1024x2048.')
+            np.save(join(data_dir, '1_dic_field.npy'), displacement_field)
+        else:
+            raise ImportError('The PyTables package is needed to load the dataset.')
+    else:
+        raise Exception('Measurement dataset {0} not found.'.format(dic_data))
+
+if show_plots:
+    # Show the axial strain on the cropped region
+    plt.matshow(np.gradient(u_restricted)[1], interpolation='none', vmin=0, vmax=0.2)
+    cbar = plt.colorbar(orientation='horizontal', format='%.2f', aspect=100,
+                        label=r'$\varepsilon_{xx}$')
+    cbar.ax.set_xlabel(r'$\varepsilon_{xx}$', fontsize=30)
+    plt.show()

@@ -6,3 +6,4 @@ Identification of individual grains in microscopic images
 
 
 
+This project is under heavy development. The documentation is not yet committed and the modules are under refactoring. Therefore, this work is not yet suitable for the public. Stay tuned...

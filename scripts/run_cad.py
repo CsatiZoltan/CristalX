@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from grains import HAS_OCCT
-from grains.geometry import polygonize, overlay_regions, splinegonize, regions2step, plot_splinegons
+from grains.cad import polygonize, overlay_regions, splinegonize, regions2step, plot_splinegons
 from grains.simulation import change_domain
 if HAS_OCCT:
     from OCC.Display.SimpleGui import init_display

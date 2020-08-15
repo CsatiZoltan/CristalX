@@ -9,13 +9,19 @@ The following functions require PythonOCC version 0.18 to be installed to allow 
 manipulations:
 
 - `fit_spline`
-- `branches2spline`
+- `branches2splines`
+- `region_as_splinegon`
+- `write_step_file`
+- `regions2step`
+- `plot_splinegons`
+- `splinegonize`
 
 """
 
 import os
 import warnings
-
+from collections import Counter
+import numpy.fft
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import collections
@@ -23,6 +29,7 @@ from skimage.segmentation import find_boundaries
 from skimage.morphology import skeletonize
 from skimage.color import label2rgb
 from skan import Skeleton, summarize
+from skan.draw import overlay_skeleton_networkx
 
 from grains import HAS_OCCT
 
@@ -69,7 +76,7 @@ def build_skeleton(label_image, connectivity=1, detect_boundaries=True):
 
     See Also
     --------
-    skan.Skeleton
+    :class:`skan.csr.Skeleton`
 
     """
     # 2D image, given as a numpy array is expected
@@ -94,7 +101,7 @@ def build_skeleton(label_image, connectivity=1, detect_boundaries=True):
     return skeleton_network
 
 
-def skeleton2regions(skeleton_network, look_around=2):
+def skeleton2regions(skeleton_network, look_around=2, algorithm=1):
     """Determines the regions bounded by a skeleton network.
 
     This function can be perceived as an intermediate step between a skeleton network and
@@ -110,6 +117,9 @@ def skeleton2regions(skeleton_network, look_around=2):
     look_around : int, optional
         A junction is considered part of a region if it is at most `look_around` pixel far from it.
         The default is 2. For further details, see the Notes below.
+    algorithm : int, optional
+        Specifies which algorithm to use for constructing the branch-region connectivity.
+        For further details, see the Notes below.
 
     Returns
     -------
@@ -200,6 +210,28 @@ def skeleton2regions(skeleton_network, look_around=2):
                                              junction_regions[branch[1]])
         branch_regions[i] = neighboring_regions
 
+    branch_coordinates = [S.path_coordinates(i) for i in range(S.n_paths) if mask[i]]
+    # New implementation
+    branch_regions2 = []
+    msk = np.array([[True, True, True, True, True], [True, False, False, False, True],
+                    [True, False, False, False, True], [True, False, False, False, True],
+                    [True, True, True, True, True]])
+    for i, branch in enumerate(branch_coordinates):
+        c = Counter()
+        for node in range(1, np.size(branch, 0) - 1):
+            node_coord = np.round(branch[node, :]).astype(np.uint32)
+            neighbor_idx = np.s_[max(node_coord[0] - look_around, 0):
+                                 min(node_coord[0] + look_around + 1, image_size[0]),
+                           max(node_coord[1] - look_around, 0):
+                           min(node_coord[1] + look_around + 1, image_size[1])]
+            neighbors = S.source_image[neighbor_idx]
+            if np.shape(neighbors) == (5, 5):
+                neighbors = neighbors[msk]
+            c.update(neighbors.flatten())
+        neighboring_regions = [pair[0] for pair in c.most_common(2)]
+        branch_regions2.append(neighboring_regions)
+    branch_regions = {key: val for key, val in enumerate(branch_regions2)}
+
     # For each region, find the branches that bound it
     region_branches = {}
     for branch, regions in branch_regions.items():
@@ -210,33 +242,32 @@ def skeleton2regions(skeleton_network, look_around=2):
                 region_branches[region].append(branch)
 
     # More than one branch can connect two junctions. In that case, leave only one.
-    branch_lengths = S.path_lengths()
-    for i in region_branches.keys():
-        branches = region_branches[i]
-        junctions = region_junctions[i]
-        if len(branches) > len(junctions):
-            # Branches that connect the same two junctions (i.e. multiple edges in the graph)
-            # branch_junctions[region_branches[i]]
-            _, id = non_unique(branch_junctions[branches], 0)
-            # Only the shortest branch bounds this region
-            edges_to_remove = []
-            for multiple_edges in id:
-                global_multiple_edges = index_list(branches, multiple_edges)
-                lengths = branch_lengths[global_multiple_edges]
-                idx_min_length = np.argmin(lengths)
-                other_edges = np.setdiff1d(range(len(multiple_edges)), idx_min_length)
-                edges_to_remove.append(multiple_edges[other_edges])
-                # Remove the current region among the regions that connect to the removed edges
-                for branch in index_list(global_multiple_edges, other_edges):
-                    regions = branch_regions[branch]
-                    kept_regions = regions[i != regions]
-                    branch_regions[branch] = kept_regions
-            correct_branches = np.delete(branches, edges_to_remove).tolist()
-            region_branches[i] = correct_branches
+    # branch_lengths = S.path_lengths()
+    # for i in region_branches.keys():
+    #     branches = region_branches[i]
+    #     junctions = region_junctions[i]
+    #     if len(branches) > len(junctions):
+    #         # Branches that connect the same two junctions (i.e. multiple edges in the graph)
+    #         # branch_junctions[region_branches[i]]
+    #         _, id = non_unique(branch_junctions[branches], 0)
+    #         # Only the shortest branch bounds this region
+    #         edges_to_remove = []
+    #         for multiple_edges in id:
+    #             global_multiple_edges = index_list(branches, multiple_edges)
+    #             lengths = branch_lengths[global_multiple_edges]
+    #             idx_min_length = np.argmin(lengths)
+    #             other_edges = np.setdiff1d(range(len(multiple_edges)), idx_min_length)
+    #             edges_to_remove.append(multiple_edges[other_edges])
+    #             # Remove the current region among the regions that connect to the removed edges
+    #             for branch in index_list(global_multiple_edges, other_edges):
+    #                 regions = branch_regions[branch]
+    #                 kept_regions = regions[i != regions]
+    #                 branch_regions[branch] = kept_regions
+    #         correct_branches = np.delete(branches, edges_to_remove).tolist()
+    #         region_branches[i] = correct_branches
 
-    branch_coordinates = [S.path_coordinates(i) for i in range(S.n_paths) if mask[i]]
     # Return outputs
-    return region_branches, branch_coordinates, branch_regions
+    return region_branches, branch_coordinates, branch_regions, branch_junctions
 
 
 def polygon_orientation(polygon):
@@ -388,7 +419,7 @@ def region_as_polygon(branches, orientation='ccw', close='False'):
     """Represents a region as a polygon.
 
     Based on the combined topological-geometrical (intermediate) representation of the regions,
-    (done by :py:func:`skeleton2regions`), this function provides a fully geometrical description
+    (done by :func:`skeleton2regions`), this function provides a fully geometrical description
     of a region.
 
     Parameters
@@ -485,7 +516,7 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=
     # Build the skeleton network from the label image
     S = build_skeleton(label_image, connectivity, detect_boundaries)
     # Identify the regions from the skeleton
-    region_branches, branch_coordinates, _ = skeleton2regions(S, look_around)
+    region_branches, branch_coordinates, _, branch_junctions = skeleton2regions(S, look_around)
     # Represent each region as a polygon
     for region, branches in region_branches.items():
         if region == -1:  # artificial outer region
@@ -494,7 +525,7 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=
         poly = region_as_polygon(points_on_boundary, orientation, close)
         plot_polygon(poly)
         polygons[region] = poly
-    # overlay_skeleton_networkx(S.graph, S.coordinates, image=label_image)
+    overlay_skeleton_networkx(S.graph, S.coordinates, image=label_image)
     plt.show()
     return polygons
 
@@ -512,7 +543,7 @@ def branches2splines(branches, degree_min=3, degree_max=8, continuity='C2', tol=
     Other Parameters
     ----------------
     degree_min, degree_max, continuity, tol
-        See the :py:func:`fit_spline` function.
+        See the :func:`fit_spline` function.
 
     Returns
     -------
@@ -579,7 +610,7 @@ def region_as_splinegon(boundary_splines):
     """Represents a region as a splinegon.
 
     Based on the combined topological-geometrical (intermediate) representation of the regions,
-    (done by :py:func:`skeleton2regions`), this function provides a fully geometrical description
+    (done by :func:`skeleton2regions`), this function provides a fully geometrical description
     of a region.
 
     Parameters
@@ -587,7 +618,7 @@ def region_as_splinegon(boundary_splines):
     boundary_splines : list
         Each element of the list is a `Handle_Geom_BSplineCurve` object, giving a reference to the
         B-splines bounding the region. The splines must either be ordered (see
-        :py:func:`branches2boundary`) or they must appear in an order such that the n-th spline in
+        :func:`branches2boundary`) or they must appear in an order such that the n-th spline in
         the list can be connected to one of the first n-1 splines in the list.
 
     Returns
@@ -644,7 +675,7 @@ def splinegonize(label_image, connectivity=1, detect_boundaries=True, look_aroun
     Other Parameters
     ----------------
     degree_min, degree_max, continuity, tol
-        See the :py:func:`fit_spline` function.
+        See the :func:`fit_spline` function.
 
     Returns
     -------
@@ -689,7 +720,7 @@ def splinegonize(label_image, connectivity=1, detect_boundaries=True, look_aroun
     # Build the skeleton network from the label image
     S = build_skeleton(label_image, connectivity, detect_boundaries)
     # Identify the regions from the skeleton
-    region_branches, branch_coordinates, _ = skeleton2regions(S, look_around)
+    region_branches, branch_coordinates, branch_regions, branch_junctions = skeleton2regions(S, look_around)
     # Approximate each branch with a B-spline
     splines = branches2splines(branch_coordinates, degree_min, degree_max, continuity, tol)
     # Represent each region as a splinegon
@@ -840,7 +871,7 @@ def plot_polygon(vertices, **kwargs):
 
     See Also
     --------
-    matplotlib.pyplot.plot
+    :func:`matplotlib.pyplot.plot`
 
     Examples
     --------
@@ -878,7 +909,7 @@ def overlay_regions(label_image, polygons, axes=None):
     See Also
     --------
     polygonize
-    matplotlib.collections.LineCollection
+    :class:`matplotlib.collections.LineCollection`
 
     """
     # TODO: support an option to give the number of identified regions as a title

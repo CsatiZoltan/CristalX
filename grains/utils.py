@@ -157,8 +157,8 @@ def argsorted(sequence, reverse=False):
 
     See Also
     --------
-    sorted
-    numpy.argsort
+    :func:`sorted`
+    :func:`numpy.argsort`
 
     Examples
     --------
@@ -286,6 +286,60 @@ def non_unique(array, axis=None):
     return nonunique_values, nonunique_indices
 
 
+def parse_kwargs(kwargs, defaults):
+    """Compares keyword arguments with defaults.
+
+    Allows processing keyword arguments supplied to a function by the user by comparing them with
+    an admissible set of options defined by the developer. There are three cases:
+
+        1. The keyword given by the user is present in the set the developer provides. Then the
+        value belonging to the keyword overrides the default value.
+
+        2. The keyword given by the user is `not` present in the set the developer provides. In
+        this case, the unrecognized keyword, along with its value, is saved separately.
+
+        3. The keyword existing in the set the developer provides is not given by the user. Then
+        the default value is used.
+
+    Parameters
+    ----------
+    kwargs : dict
+        Keyword arguments (parameter-value pairs) passed to a function.
+    defaults : dict
+        Default parameter-value pairs.
+
+    Returns
+    -------
+    parsed : dict
+        Dictionary with the same keys as :code:`defaults`, the parsed parameter-value pairs.
+    unknown : dict
+        Dictionary containing the parameter-value pairs not present in :code:`defaults`.
+
+    Notes
+    -----
+    The default values, given in the input dictionary :code:`defaults`, are never overwritten.
+
+    Examples
+    --------
+    >>> default_options = {'opt1': 1, 'opt2': 'string', 'opt3': [-1, 0]}
+    >>> user_options = {'opt3': [2, 3, -1], 'opt2': 'string',  'opt4': -2.14}
+    >>> parsed_options, unknown_options = parse_kwargs(user_options, default_options)
+    >>> parsed_options
+    {'opt1': 1, 'opt2': 'string', 'opt3': [2, 3, -1]}
+    >>> unknown_options
+    {'opt4': -2.14}
+
+    """
+    parsed = defaults.copy()
+    unknown = {}
+    for param, value in kwargs.items():
+        if param in defaults:
+            parsed[param] = value
+        else:
+            unknown[param] = value
+    return parsed, unknown
+
+
 def compress(filename, level=9):
     """Creates a zip archive from a single file.
 
@@ -302,7 +356,7 @@ def compress(filename, level=9):
 
     See Also
     --------
-    zipfile.ZipFile
+    :class:`zipfile.ZipFile`
 
     """
     name = os.path.splitext(filename)[0]
@@ -325,7 +379,7 @@ def decompress(filename, path=None):
 
     See Also
     --------
-    zipfile.ZipFile
+    :class:`zipfile.ZipFile`
 
     """
     with zipfile.ZipFile(filename, mode='r') as compressed:
@@ -348,7 +402,7 @@ def decompress_inmemory(filename):
 
     See Also
     --------
-    zipfile.ZipFile
+    :class:`zipfile.ZipFile`
 
     """
     data = {}

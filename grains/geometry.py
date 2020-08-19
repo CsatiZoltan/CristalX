@@ -23,6 +23,10 @@ Functions
 from abc import ABC, abstractmethod
 
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.tri import Triangulation
+
+from grains.utils import parse_kwargs
 
 
 class Mesh(ABC):
@@ -157,6 +161,12 @@ class TriMesh(Mesh):
         have the same number of vertices.
 
     """
+    # Default settings for plotting the mesh
+    plot_options = {'ax': None,  # Axes object the mesh is plotted
+                    'cell_sets': True, 'vertex_sets': True,  # plot groups (if any)
+                    'cell_legends': False, 'vertex_legends': False,  # show group legends
+                    'cell_labels': False, 'vertex_labels': False  # show labels
+                    }
 
     def __init__(self, vertices, cells):
         super().__init__(vertices, cells)
@@ -324,6 +334,109 @@ class TriMesh(Mesh):
             area += self.cell_area(cell)
         return area
 
+    def plot(self, *args, **kwargs):
+        """Plots the mesh.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            The `Axes` instance the mesh resides in. The default is None, in which case a new
+            `Axes` within a new figure is created.
+
+        Other Parameters
+        ----------------
+        cell_sets, vertex_sets : bool, optional
+            If True, the cell/vertex sets (if exist) are highlighted in random colors.
+            The default is True.
+        cell_legends, vertex_legends : bool, optional
+            If True, cell/vertex set legends are shown. The default is False. For many sets,
+            it is recommended to leave these options as False, otherwise the plotting becomes
+            very slow.
+        cell_labels, vertex_labels : bool, optional
+            If True, cell/vertex labels are shown. The default is False. Recommended to be left
+            False in case of many cells/vertices. Cell labels are positioned in the centroids
+            of the cells.
+        args, kwargs : optional
+            Additional arguments and keyword arguments to be specified. Those arguments are the
+            ones supported by :meth:`matplotlib.axes.Axes.plot`.
+
+        Returns
+        -------
+        None
+
+        Notes
+        -----
+        If you do not want to plot the cells, only the vertices, pass the :code:`'.'` option, e.g.:
+
+        .. code-block:: python
+
+            mesh.plot('k.')
+
+        to plot the vertices in black. Here, :code:`mesh` is a `TriMesh` object.
+
+        Examples
+        --------
+        A sample mesh is constructed by creating uniformly randomly distributed points on the
+        rectangular domain [-1, 1] x [1, 2]. These points will constitute the vertices of the
+        mesh, while its cells are the Delaunay triangles on the vertices.
+
+        >>> msh = TriMesh(*TriMesh.sample_mesh(1))
+
+        The cells are drawn in greeen, in 3 points of line width, and the vertices of the mesh
+        are shown in blue.
+
+        >>> msh.plot('go-', linewidth=3, markerfacecolor='b', vertex_labels=True)
+        >>> plt.show()
+
+        Notes
+        -----
+        The plotting is done by calling :func:`~matplotlib.pyplot.triplot`, which internally
+        makes a deep copy of the triangles. This increases the memory usage in case of many
+        elements.
+
+        """
+        method_options, matplotlib_options = parse_kwargs(kwargs, TriMesh.plot_options)
+
+        # Plot the cells
+        ax = method_options['ax'] if method_options['ax'] else plt.figure().add_subplot()
+        ax.set_aspect('equal')
+        ax.triplot(self.vertices[:, 0], self.vertices[:, 1], self.cells, *args,
+                   **matplotlib_options)
+
+        # Show element labels, if requested
+        if method_options['cell_labels']:
+            for label, elem in enumerate(self.cells):
+                x, y = np.mean(self.vertices[elem], axis=0)
+                ax.text(x, y, str(label))
+        if method_options['vertex_labels']:
+            for label, vertex in enumerate(self.vertices):
+                x, y = vertex
+                ax.text(x, y, str(label))
+
+        # Plot the cell sets, vertex sets, and show their labels in the legend, if requested
+        if method_options['cell_sets']:
+            for name, cells in self.cell_sets.items():
+                cells_in_set = self.cells[cells]
+                triangles = ax.triplot(self.vertices[:, 0], self.vertices[:, 1], cells_in_set, *args,
+                                       color=np.random.random((3, )), **matplotlib_options)[0]
+                if method_options['cell_legends']:
+                    n_cell_set = len(self.cell_sets)
+                    triangles.set_label(name)
+                    ax.legend(loc='lower left', bbox_to_anchor=(0.0, 1.01), ncol=n_cell_set,
+                              frameon=False)
+        if method_options['vertex_sets']:
+            for name, vertices in self.vertex_sets.items():
+                markercolor = np.random.random((3, ))
+                vertices_in_set = self.vertices[vertices]
+                points = ax.plot(vertices_in_set[:, 0], vertices_in_set[:, 1], marker='.',
+                                 markerfacecolor=markercolor, markeredgecolor=markercolor,
+                                 markersize=10, linestyle='None')[0]
+                if method_options['vertex_legends']:
+                    n_vertex_set = len(self.vertex_sets)
+                    points.set_label(name)
+                    ax.legend(loc='lower left', bbox_to_anchor=(0.0, 1.01), ncol=n_vertex_set,
+                              frameon=False)
+
     def write_inp(self, filename):
         """Writes the mesh to an Abaqus .inp file.
 
@@ -383,6 +496,42 @@ class TriMesh(Mesh):
         # Write to file
         with open(filename, 'w') as target:
             target.write(inp_file)
+
+    @staticmethod
+    def sample_mesh(sample, param=100):
+        """Provides sample meshes.
+
+        Parameters
+        ----------
+        sample : int
+            Integer, giving the sample mesh to be considered. Possibilities:
+        param :
+            Parameters to the sample meshes. Possibilities:
+
+        Returns
+        -------
+        nodes : ndarray
+            2D numpy array with 2 columns, each row corresponding to a vertex, and the two columns
+            giving the Cartesian coordinates of the vertices.
+        cells : ndarray
+            Cell-vertex connectivity in a 2D numpy array, in which each row corresponds to a
+            cell and the columns are the vertices of the cells. It is assumed that all the
+            cells have the same number of vertices.
+
+        """
+        if sample == 1:
+            n_vertex = param
+            a, b, c, d = (-1, 1, 1, 2)
+            x_vertices = (b-a) * np.random.rand(n_vertex) + a
+            y_vertices = (d-c) * np.random.rand(n_vertex) + c
+            vertices = np.stack((x_vertices, y_vertices), axis=1)
+            cells = Triangulation(x_vertices, y_vertices).triangles
+        elif sample == 2:
+            vertices = np.array([[]])
+            cells = np.array([[]])
+        else:
+            raise ValueError('Sample not available.')
+        return vertices, cells
 
 
 def _polygon_area(x, y):

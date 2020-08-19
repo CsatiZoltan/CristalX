@@ -63,6 +63,7 @@ class Mesh(ABC):
         self.cells = cells
         self.vertex_sets = {}
         self.cell_sets = {}
+        self.field = {'name': None, 'values': None}  # field attached to the mesh
 
     def create_cell_set(self, name, cells):
         """Forms a group from a set of cells.
@@ -93,6 +94,30 @@ class Mesh(ABC):
 
         """
         self.vertex_sets[name] = vertices
+
+    def associate_field(self, vertex_values, name='field'):
+        """Associates a scalar, vector or tensor field to the nodes.
+
+        Only one field can be present at a time. If you want to use a new field, call this method
+        again with the new field values, which will replace the previous ones.
+
+        Parameters
+        ----------
+        vertex_values : ndarray
+            Field values at the nodes.
+        name : str, optional
+            Name of the field. If not given, it will be 'field'.
+
+        Returns
+        -------
+        None
+
+        """
+        if Mesh._isvector(vertex_values):  # store as a column vector
+            vertex_values = np.reshape(vertex_values, (len(vertex_values), 1))
+        elif not Mesh._ismatrix(vertex_values):
+            raise ValueError('Vertex values are expected to be given in a vector or in a matrix.')
+        self.field = {'name': name, 'values': vertex_values}
 
     @staticmethod
     def _isvector(array):
@@ -436,6 +461,75 @@ class TriMesh(Mesh):
                     points.set_label(name)
                     ax.legend(loc='lower left', bbox_to_anchor=(0.0, 1.01), ncol=n_vertex_set,
                               frameon=False)
+
+    def plot_field(self, component, *args, show_mesh=True, **kwargs):
+        """Plots a field on the mesh.
+
+        The aim of this method is to support basic post-processing for finite element visualization.
+        Only the basic contour plot type is available. For vector or tensor fields, the
+        components to be plotted must be chosen. For faster and more comprehensive plotting
+        capabilities, turn to well-established scientific visualization software,
+        such as `ParaView <https://www.paraview.org>`_ or `Mayavi
+        <http://docs.enthought.com/mayavi/mayavi/>`_. Another limitation of the :meth:`plot_field`
+        method is that field values are assumed to be associated to the vertices of the mesh,
+        which restricts us to :math:`P1` Lagrange elements.
+
+        Parameters
+        ----------
+        component : int
+            Positive integer, the selected component of the field to be plotted. Components are
+            indexed from 0.
+        show_mesh : bool, optional
+            If True, the underlying mesh is shown. The default is True.
+        ax : matplotlib.axes.Axes, optional
+            The `Axes` instance the plot resides in. The default is None, in which case a new
+            `Axes` within a new figure is created.
+
+        Other Parameters
+        ----------------
+        See them described in the :meth:`plot` method.
+
+        Returns
+        -------
+        None
+
+        See Also
+        --------
+        plot
+
+        Examples
+        --------
+        The following example considers the same type of mesh as in the example shown for
+        :meth:`plot`.
+
+        >>> msh = TriMesh(*TriMesh.sample_mesh(1))
+
+        We pretend that the field is an analytical function, evaluated at the vertices.
+
+        >>> field = lambda x, y: 1 - (x + y**2) * np.sign(x)
+        >>> field = field(msh.vertices[:, 0], msh.vertices[:, 1])
+
+        We associate this field to the mesh and plot it with and without the mesh
+
+        >>> msh.associate_field(field, 'analytical field')
+        >>> _, (ax1, ax2) = plt.subplots(1, 2)
+        >>> msh.plot_field(0, 'bo-', ax=ax1, linewidth=1, markerfacecolor='k')
+        >>> msh.plot_field(0, ax=ax2, show_mesh=False)
+        >>> plt.show()
+
+        """
+        if self.field['values'] is None:
+            raise Exception('Field is not associated to the mesh.')
+        field = self.field['values']
+        n_component = np.shape(field)[1]
+        if component not in range(n_component):
+            raise ValueError('Component must be in [0, {0}].'.format(n_component-1))
+        method_options, _ = parse_kwargs(kwargs, TriMesh.plot_options)
+        ax = method_options['ax'] if method_options['ax'] else plt.figure().add_subplot()
+        ax.set_aspect('equal')
+        ax.tricontourf(self.vertices[:, 0], self.vertices[:, 1], field[:, component], 1000)
+        if show_mesh:
+            self.plot(*args, **kwargs)
 
     def write_inp(self, filename):
         """Writes the mesh to an Abaqus .inp file.

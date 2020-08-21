@@ -924,6 +924,173 @@ class Procedure:
         else:
             print('"{0}" does not exist. Boundary condition not added.'.format(step))
 
+    def read(self, inp_file):
+        """Reads procedure data from an Abaqus .inp file.
+
+        Parameters
+        ----------
+        inp_file : str
+            Abaqus input (.inp) file to be created.
+
+        Returns
+        -------
+        None.
+
+        Notes
+        -----
+        - This method is designed to read material data. Although the logic
+          could be used to process other properties (parts, assemblies, etc.)
+          in an input file, they are not yet implemented in this class.
+        - This method assumes that the input file is valid. If it is, the
+          material data can be extacted. If not, the behavior is undefined:
+          the program can crash or return garbage. This is by design:
+          the single responsibility principle dictates that the validity of the
+          input file must be provided by other methods. If the input file was
+          generated from within Abaqus CAE, it is guaranteed to be valid.
+          The `write` method of this class also ensures that the resulting
+          input file is valid. This design choice also makes the program logic
+          simpler.
+          For valid syntax in the input file, check the Input Syntax Rules
+          section in the Abaqus user's guide.
+        - To read material data from an input file, one has to identify the
+          structure of .inp files in Abaqus. Abaqus is driven by keywords and
+          corresponding data. For a list of accepted keywords, consult the
+          Abaqus Keywords Reference Guide.
+          There are three types of input lines in Abaqus:
+              - keyword line: begins with a star, followed by the name of the
+                keyword. Parameters, if any, are separated by commas and are
+                given as parameter-value pairs. Keywords and parameters are not
+                case sensitive. Example:
+                    *ELASTIC, TYPE=ISOTROPIC, DEPENDENCIES=1
+                Some keywords can only be defined once another keyword has
+                already been defined. E.g. the keyword ELASTIC must come after
+                MATERIAL in a valid .inp file.
+              - data line: immediately follows a keyword line. All data items
+                must be separated by commas. Example:
+                    -12.345, 0.01, 5.2E-2, -1.2345E1
+              - comment line: starts with ** and is ignored by Abaqus. Example:
+                    ** This is a comment line
+        - Internally, the materials are stored in a dictionary. It holds the
+          material data read from the file. The keys in this dictionary are the
+          names of the materials, and the values are dictionaries themselves.
+          Each such dictionary stores a behavior for the given material.
+          E.g. an elastoplastic material is governed by an elastic and a
+          plastic behavior. The parameters for each behavior are stored in a list.
+
+        """
+        if self.state['read']:
+            raise Exception('Step definition database already exists. Instantiate a '
+                            'new Procedure object for another database.')
+        validate_file(inp_file, 'read')
+        in_step = False  # true when reached the step definition block
+        in_analysis = False  # true when reached an analysis definition block
+        in_bc = False  # true when reached a boundary condition definition block
+        steps = {}  # holds the materials read from the input file
+        bc_count = 0
+        generalkeyword = re.compile('^\*\s?\w')  # any Abaqus keyword
+        # step = re.compile('\*step, name=([\w-]+), nlgeom=([\w-]+), inc=([0-9]+)', re.IGNORECASE)
+        step = re.compile('\*step, ', re.IGNORECASE)
+        end_step = re.compile('\*end step', re.IGNORECASE)
+        analysis = re.compile('\*static', re.IGNORECASE)
+        bc = re.compile('\*boundary', re.IGNORECASE)
+        comment = re.compile('^[\s]?\*\*')
+        is_greedy = self.is_greedy
+        with open(inp_file, 'r') as file:
+            for line_number, line in enumerate(file, 0):  # read the file line by line
+                is_generalkeyword = generalkeyword.match(line)
+                is_step = step.match(line)
+                is_end_step = end_step.match(line)
+                is_analysis = analysis.match(line)
+                is_bc = bc.match(line)
+                is_comment = comment.match(line)
+                is_parameter = not is_generalkeyword and not is_comment
+                is_analysis_param = is_parameter and in_analysis
+                is_bc_param = is_parameter and in_bc
+                if is_step:
+                    if not in_step:  # we entered the first material
+                        in_step = True
+                        begin = line_number
+                    step_name = is_step.group(1)
+                    steps[step_name] = {}
+                    steps[step_name]['boundary_conditions'] = {}
+                    nlgeom = is_step.group(2)
+                    max_increments = int(is_step.group(3))
+                    steps[step_name]['step_options'] = {'nlgeom': nlgeom, 'inc': max_increments}
+                elif is_analysis:
+                    in_analysis = True
+                    in_bc = False
+                elif is_bc:
+                    bc_count += 1
+                    in_bc = True
+                    in_analysis = False
+                    bc_name = 'BC-' + str(bc_count)
+                    steps[step_name]['boundary_conditions'][bc_name] = []
+                elif is_analysis_param:
+                    params = line[0:-1].split(',')
+                    if len(params) == 0:
+                        time_period = 1.0
+                        initial_increment = time_period
+                        min_increment = min(initial_increment, 1e-5*time_period)
+                        max_increment = time_period
+                    if len(params) == 1:
+                        initial_increment = float(params[0])
+                        time_period = 1.0
+                        min_increment = min(initial_increment, 1e-5 * time_period)
+                        max_increment = time_period
+                    if len(params) == 2:
+                        initial_increment = float(params[0])
+                        time_period = float(params[1])
+                        min_increment = min(initial_increment, 1e-5 * time_period)
+                        max_increment = time_period
+                    if len(params) == 3:
+                        initial_increment = float(params[0])
+                        time_period = float(params[1])
+                        min_increment = float(params[2])
+                        max_increment = time_period
+                    if len(params) == 4:
+                        initial_increment = float(params[0])
+                        time_period = float(params[1])
+                        min_increment = float(params[2])
+                        max_increment = float(params[3])
+                    params = [initial_increment, time_period, min_increment, max_increment]
+                    steps[step_name]['analysis'] = params
+                elif is_bc_param:
+                    params = line[0:-1].split(',')
+                    if len(params) < 2:
+                        raise ValueError('')
+                    if len(params) == 2:
+                        params[1] = int(params[1])
+                        params.extend([params[1], 0.0])
+                    elif len(params) == 3:
+                        params[1] = int(params[1])
+                        params[2] = int(params[2])
+                        params.append(0.0)
+                    elif len(params) == 4:
+                        params[1] = int(params[1])
+                        params[2] = int(params[2])
+                        params[3] = float(params[3])
+                    else:
+                        raise ValueError('')
+                    # node_set, first_dof, last_dof, magnitude
+                    steps[step_name]['boundary_conditions'][bc_name].append(params)
+                elif is_end_step:
+                    in_step = False
+                elif (is_generalkeyword or is_comment) and in_step and is_greedy:
+                    # We were previously in a step definition section but now we detected a new
+                    # keyword. In an Abaqus-generated .inp file this indicates that the step
+                    # definition section has ended: no need to search for more.
+                    end = line_number-1
+                    break
+        if 'end' not in locals():  # input file ends with materials
+            end = line_number
+        if 'begin' not in locals():  # input file does not contain materials
+            begin = line_number+1
+        self.inp_file = inp_file
+        self.steps = steps
+        self.state['begin'] = begin
+        self.state['end'] = end
+        self.state['read'] = True
+
     def write(self, output_file=None):
         """Writes step definition data to an Abaqus .inp file.
 

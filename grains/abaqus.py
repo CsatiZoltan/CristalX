@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 """
+.. warning::
+    This module will substantially be rewritten. See `this issue
+    <https://github.com/CsatiZoltan/Polycrystalline-microstructures/issues/28>`_.
+
 This module allows to create and manipulate Abaqus input files through the `Abaqus keywords
 <https://abaqus-docs.mit.edu/2017/English/SIMACAECAERefMap/simacae-c-gen-kwbrowser.htm>`_, thereby
 providing automation.
@@ -799,12 +803,12 @@ class Procedure:
         ----------
         step : str
             Name of the step the analysis type belongs to.
-        time_period : float, optional
-            Time period of the step. The default is 1.0.
         initial_increment : float, optional
             Initial time increment. This value will be modified as required if the automatic time
             stepping scheme is used. If this entry is zero or is not specified, a default value
             that is equal to the total time period of the step is assumed.
+        time_period : float, optional
+            Time period of the step. The default is 1.0.
         min_increment : float, optional
             Only used for automatic time incrementation. If ABAQUS/Standard finds it needs a
             smaller time increment than this value, the analysis is terminated. If this entry
@@ -842,7 +846,7 @@ class Procedure:
         else:
             print('"{0}" does not exist. Analysis not added.'.format(step))
 
-    def add_boundary_condition(self, name, step, node_set, first_dof, last_dof=None, magnitude=0.0):
+    def add_boundary_condition(self, name, step, nodes, first_dof, last_dof=None, magnitude=0.0):
         """Adds boundary condition to a given step.
 
         Boundary conditions can be prescribed on node sets, using the Abaqus keyword `BOUNDARY
@@ -862,8 +866,9 @@ class Procedure:
             Name of the boundary condition to be added. Boundary condition names must be unique.
         step : str
             Name of the step the boundary condition belongs to.
-        node_set : str
-            Label of the node set on which the boundary condition is prescribed.
+        nodes : str or int
+            If a string, the label of the node set, if a positive integer, the label of a single
+            node on which the boundary condition is prescribed.
         first_dof : int
             First degree of freedom constrained.
         last_dof : int, optional
@@ -897,15 +902,23 @@ class Procedure:
         >>> proc.add_boundary_condition('pulled_right', 'Step-1', 'right', first_dof=1, magnitude=2)
         >>> proc.add_boundary_condition('fixed_right', 'Step-1', 'right', first_dof=2, magnitude=0)
 
+        Note that we can also prescribe boundary conditions at a particular node, e.g.
+
+        >>> proc.add_boundary_condition('at_node', 'Step-1', 1, first_dof=2, magnitude=-1.2)
+
+        where we set the vertical displacement component to -1.2 at node 1.
+
         """
         if not last_dof:
             last_dof = first_dof
+        if type(nodes) not in {int, str}:
+            raise TypeError('Give either a single node or a node set.')
         if step in self.steps:
             if name in self.steps[step]['boundary_conditions']:
                 print('Boundary condition "{0}" already exists for step {1}. Remove it first to '
                       'add the new one or choose another name.'.format(name, step))
             else:
-                self.steps[step]['boundary_conditions'][name] = [node_set, ' ' + str(first_dof),
+                self.steps[step]['boundary_conditions'][name] = [str(nodes), ' ' + str(first_dof),
                                                                  ' ' + str(last_dof),
                                                                  ' ' + str(float(magnitude))]
         else:
@@ -1081,7 +1094,6 @@ def validate_file(file, caller):
 
 def extract(keyword):
     """Obtains Abaqus keyword and its parameters.
-    Given a
 
     Parameters
     ----------

@@ -2,11 +2,17 @@
 """
 This module contains the Analysis class, responsible for the analysis of
 segmented grain-based microstructures.
+
+All the examples assume that the modules `numpy` and `matplotlib.pyplot` were imported as `np`
+and `plt`, respectively.
+
 """
 
 from math import sqrt
+import warnings
 
 import numpy as np
+from scipy.interpolate import griddata
 from scipy.spatial.distance import pdist
 from skimage import io, color
 from skimage.measure._find_contours import find_contours
@@ -14,6 +20,8 @@ from skimage.measure._marching_cubes_lewiner import marching_cubes_lewiner as ma
 from skimage.measure import regionprops
 import matplotlib.pyplot as plt
 import pandas as pd
+
+from grains.utils import parse_kwargs
 
 
 class Analysis:
@@ -193,7 +201,7 @@ def feret_diameter(prop):
 
     See also
     --------
-    skimage.measure.regionprops : Measure properties of labeled image regions
+    :func:`skimage.measure.regionprops` : Measure properties of labeled image regions
 
     Examples
     --------
@@ -264,3 +272,98 @@ def plot_prop(prop, pixel_per_unit=1, show_axis=True):
             axis.set_axis_off()
     plt.show()
     return fig
+
+
+def plot_grain_characteristic(characteristic, centers, interpolation='linear',
+                              grid_size=(100, 100), **kwargs):
+    """Plots the distribution of a given grain characteristic.
+
+    One way to gain insight into a grain assembly is to plot the distribution of a certain grain
+    property in the domain the grains occupy. In this function, for each grain, and arbitrary
+    (scalar) quantity is associated to the center of the grain. In case of `n` grains, `n` data
+    points span the interpolant and the given characteristic is interpolated on a grid of the
+    AABB of the grain centers.
+
+    Parameters
+    ----------
+    characteristic : ndarray
+        Characteristic property, the distribution of which is sought. A 1D numpy array.
+    centers : ndarray
+        2D numpy array with 2 columns, each row corresponding to a grain, and the two columns
+        giving the Cartesian coordinates of the grain center.
+    interpolation : {'nearest', 'linear', 'cubic'}, optional
+        Type of the interpolation for creating the distribution. The default is `'linear'`.
+    grid_size : tuple of int, optional
+        2-tuple, the size of the grid on which the data is interpolated. The default is (100, 100).
+
+    Other Parameters
+    ----------------
+    center_marker : str, optional
+        Marker indicating the center of the grains. The default is `'P'`. For a list of supported
+        markers, see the `documentation
+        <https://matplotlib.org/3.2.1/gallery/lines_bars_and_markers/marker_reference.html>`_.
+        If you do not want the centers to be shown, choose `'none'`.
+    show_axis : bool, optional
+        If True, the axes are displayed. The default is False.
+
+    Returns
+    -------
+    None
+
+    See Also
+    --------
+    :func:`scipy.interpolate.griddata`
+
+    Notes
+    -----
+    This function knows nothing about how the center of a grain is determined and what
+    characteristic features a grain has. It only performs interpolation and visualization,
+    hence decoupling the plotting from the actual representation of grains and their
+    characteristics. For instance, a grain can be represented as a spline surface, as a polygon,
+    as an assembly of primitives (often triangles), as pixels, just to mention some typical
+    scenarios. Calculating the center of a grain depends on the grain representation at hand.
+    Similarly, one can imagine various grain characteristics, such as area, diameter, Young modulus.
+
+    Examples
+    --------
+    Assume that the grain centers are sampled from a uniformly random distribution on the unit
+    square.
+
+    >>> n_data = 100
+    >>> points = np.random.random((n_data, 2))
+
+    The quantity we want to plot has a parabolic distribution with respect to the position of the
+    grain centers.
+
+    >>> func = lambda x, y: 1 - (x-0.5)**2 - (y-0.5)**2
+    >>> plot_grain_characteristic(func(points[:, 0], points[:, 1]), points, center_marker='*')
+    >>> plt.show()
+
+    """
+    n = np.size(characteristic)
+    characteristic = np.reshape(characteristic, (n,))
+    parsed_options, unknown_options = \
+        parse_kwargs(kwargs, {'center_marker': 'P', 'show_axis': False})
+    if unknown_options:
+        warnings.warn('The following keyword arguments are not recognized: {0}.'.format(list(
+            unknown_options.keys())), Warning)
+    # Grid on which the data is interpolated
+    x_range = (np.min(centers), np.max(centers))
+    y_range = (np.min(centers), np.max(centers))
+    x, y = np.mgrid[x_range[0]:x_range[1]:complex(0, grid_size[0]),
+                    y_range[0]:y_range[1]:complex(0, grid_size[1])]
+    # Interpolate the grain characteristic at the grid points
+    f = griddata(centers, characteristic, (x, y), method=interpolation)
+    f_nearest = griddata(centers, characteristic, (x, y), method='nearest')
+    outside_region = np.isnan(f)
+    ff = f.copy()
+    ff[outside_region] = f_nearest[outside_region]
+    # Plot the distribution of the grain characteristic
+    fig, ax = plt.subplots()
+    image = ax.imshow(ff, interpolation='none', extent=(*x_range, *y_range))
+    if not parsed_options['show_axis']:
+        plt.axis('off')
+    plt.colorbar(image)
+    ax.plot(centers[:, 0], centers[:, 1], parsed_options['center_marker'],
+            markeredgecolor='black', markerfacecolor='black')
+    ax.set_aspect('equal')

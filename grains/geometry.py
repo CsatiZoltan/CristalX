@@ -196,6 +196,53 @@ class TriMesh(Mesh):
     def __init__(self, vertices, cells):
         super().__init__(vertices, cells)
 
+    def cell_set_to_mesh(self, cell_set):
+        """Creates a mesh from a cell set.
+
+        The cell orientation is preserved. I.e. if the cells had a consistent orientation
+        (clockwise or counter-clockwise), the cells of the new mesh inherit this property.
+
+        Parameters
+        ----------
+        cell_set : str
+            Name of the cell set being used to construct the new mesh. The cell set must be
+            present in the :code:`cell_sets` member variable of the current mesh object.
+
+        Returns
+        -------
+        TriMesh
+            A new :class:`TriMesh` object, based on the selected cell set of the original mesh.
+
+        Notes
+        -----
+        The implementation is based on https://stackoverflow.com/a/13572640/4892892.
+
+        Examples
+        --------
+        >>> mesh = TriMesh(np.array([[0, 0], [1, 0], [0, 1], [1, 1]]),
+        ...                np.array([[0, 1, 2], [1, 3, 2]]))
+        >>> mesh.create_cell_set('set', [1])
+        >>> new_mesh = mesh.cell_set_to_mesh('set')
+        >>> new_mesh.cells  # note that the vertices have been relabelled
+        array([[0, 2, 1]])
+        >>> new_mesh.vertices
+        array([[1, 0],
+               [0, 1],
+               [1, 1]])
+        >>> new_mesh.plot(cell_labels=True, vertex_labels=True)
+        >>> plt.show()
+
+        """
+        # Cells and vertices in the given cell set
+        cells = self.cells[self.cell_sets[cell_set]]
+        vertices = np.unique(cells)
+        # Indices where the vertices can be found in the cell-vertex connectivity matrix
+        cell_vertex_flattened = np.digitize(cells.ravel(), vertices, right=True)
+        # These indices, at the same time, give the new cell labels
+        # (because the vertices are renumbered as 0, 1, ...)
+        cells_renumbered = cell_vertex_flattened.reshape(cells.shape)
+        return TriMesh(self.vertices[vertices], cells_renumbered)
+
     def change_vertex_numbering(self, orientation, inplace=False):
         """Changes cell vertex numbering.
 

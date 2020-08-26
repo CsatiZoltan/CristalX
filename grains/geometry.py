@@ -119,6 +119,53 @@ class Mesh(ABC):
             raise ValueError('Vertex values are expected to be given in a vector or in a matrix.')
         self.field = {'name': name, 'values': vertex_values}
 
+    def get_edges(self):
+        """Constructs edge-cell connectivities of the mesh.
+
+        The cells of the mesh do not necessarily have to have a consistent vertex numbering.
+
+        Returns
+        -------
+        edges : dict
+            The keys of the returned dictionary are 2-tuples, representing the two vertices of
+            the edges, while the values are the list of cells containing a particular edge.
+
+        Notes
+        -----
+        We traverse through the cells of the mesh, and within each cell the edges. The edges are
+        stored as new entries in a dictionary if they are not already stored. Checking if a key
+        exists in a dictionary is performed in O(1). The number of edges in a cell is independent
+        of the mesh density. Therefore, the time complexity of the algorithm is O(N), where N is
+        the number of cells in the mesh.
+
+        Examples
+        --------
+        We show an example for a triangular mesh (as the :class:`Mesh` class is abstract).
+
+        >>> mesh = TriMesh(np.array([[0, 0], [1, 0], [2, 0], [0, 2], [0, 1], [1, 1]]),
+        ...                np.array([[0, 1, 5], [4, 5, 3], [5, 4, 0], [2, 5, 1]]))
+        >>> edges = mesh.get_edges()
+        >>> edges  # doctest: +NORMALIZE_WHITESPACE
+        {(0, 1): [0], (1, 5): [0, 3], (5, 0): [0, 2], (4, 5): [1, 2], (5, 3): [1],
+        (3, 4): [1], (4, 0): [2], (2, 5): [3], (1, 2): [3]}
+        >>> mesh.plot(cell_labels=True, vertex_labels=True)
+        >>> plt.show()
+
+        """
+        edges = {}
+        n_cell_edge = np.size(self.cells, 1)
+        for cell, cell_edges in enumerate(self.cells):
+            for i in np.arange(n_cell_edge):
+                edge = tuple(np.roll(cell_edges, -i)[0:2])
+                edge_reverse_orientation = edge[::-1]
+                if edge in edges:
+                    edges[edge].append(cell)
+                elif edge_reverse_orientation in edges:
+                    edges[edge_reverse_orientation].append(cell)
+                else:
+                    edges[edge] = [cell]
+        return edges
+
     @staticmethod
     def _isvector(array):
         """Decides whether the input is a vector.

@@ -18,6 +18,8 @@ Functions
 .. autosummary::
 
     is_collinear
+    squared_distance
+    distance_matrix
     _polygon_area
 
 """
@@ -879,16 +881,82 @@ def is_collinear(points, tol=None):
     Examples
     --------
     Two points are always collinear
+
     >>> is_collinear(np.array([[1, 0], [1, 5]]))
     True
 
     Three points in 3D which are supposed to be collinear (returns false due to numerical error)
+
     >>> is_collinear(np.array([[0, 0, 0], [1, 1, 1], [5, 5, 5]]), tol=0)
     False
 
     The previous example with looser tolerance
+
     >>> is_collinear(np.array([[0, 0, 0], [1, 1, 1], [5, 5, 5]]), tol=1e-14)
     True
 
     """
     return np.linalg.matrix_rank(points - points[0, :], tol=tol) < 2
+
+
+def squared_distance(x, y):
+    """Squared Euclidean distance between two points.
+
+    For points :math:`x(x_1, ..., x_n)` and :math:`y(y_1, ... y_n)` the following metric is computed
+
+    .. math::
+        \sum\limits_{i=1}^n (x_i - y_i)^2
+
+    Parameters
+    ----------
+    x, y : ndarray
+        1D numpy array, containing the coordinates of the two points.
+
+    Returns
+    -------
+    float
+        Squared Euclidean distance.
+
+    See Also
+    --------
+    distance_matrix
+
+    Examples
+    --------
+    >>> squared_distance(np.array([0, 0, 0]), np.array([1, 1, 1]))
+    3.0
+
+    """
+    return float(((x - y) ** 2).sum())
+
+
+def distance_matrix(points):
+    """A symmetric square matrix, containing the pairwise squared Euclidean distances among points.
+
+    Parameters
+    ----------
+    points : ndarray
+        2D numpy array with 2 columns, each row corresponding to a point, and the two columns
+        giving the Cartesian coordinates of the points.
+
+    Returns
+    -------
+    dm : ndarray
+        Distance matrix.
+
+    See Also
+    --------
+    squared_distance
+
+    Examples
+    --------
+    >>> points = np.array([[1, 1], [3, 0], [-1, -1]])
+    >>> distance_matrix(points)
+    array([[ 0.,  5.,  8.],
+           [ 5.,  0., 17.],
+           [ 8., 17.,  0.]])
+
+    """
+    dm = np.asarray([[squared_distance(p1, p2) for p2 in points] for p1 in points])
+    np.fill_diagonal(dm, 0.0)
+    return dm

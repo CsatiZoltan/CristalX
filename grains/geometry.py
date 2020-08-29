@@ -50,6 +50,18 @@ class Mesh(ABC):
         cell and the columns are the vertices of the cells. It is assumed that all the cells
         have the same number of vertices.
 
+    See Also
+    --------
+    ~TriMesh.change_vertex_numbering
+
+    Notes
+    -----
+    Although not necessary, it is highly recommended that the local vertex numbering in the
+    cells are the same, either clockwise or counter-clockwise. Some methods, such as
+    :meth:`get_boundary` even requires it. If you are not sure whether the cells you provide
+    have a consistent numbering, it is better to renumber them by calling the
+    :meth:`~TriMesh.change_vertex_numbering` method.
+
     """
 
     # @abstractmethod
@@ -138,6 +150,10 @@ class Mesh(ABC):
         of the mesh density. Therefore, the time complexity of the algorithm is O(N), where N is
         the number of cells in the mesh.
 
+        See Also
+        --------
+        get_boundary
+
         Examples
         --------
         We show an example for a triangular mesh (as the :class:`Mesh` class is abstract).
@@ -164,7 +180,79 @@ class Mesh(ABC):
                     edges[edge_reverse_orientation].append(cell)
                 else:
                     edges[edge] = [cell]
+        if any(len(i) not in {1, 2} for i in edges.values()):
+            raise Exception('Each edge must have either 1 or 2 neighboring cells.')
         return edges
+
+    def get_boundary(self):
+        """Extracts the boundary of the mesh.
+
+        It is expected that all the cells have the same orientation, i.e. the cell vertices are
+        consistently numbered (either clockwise or counter-clockwise). See the constructor for
+        details.
+
+        Returns
+        -------
+        boundary_vertices : ndarray
+            Ordered 1D ndarray of vertices, the boundary vertices of the mesh.
+        boundary_edges : dict
+            The keys of the returned dictionary are 2-tuples, representing the two vertices of
+            the boundary edges, while the values are the list of cells containing a particular
+            boundary edge. The dictionary is ordered: the consecutive keys represent the
+            consecutive boundary edges. Although a boundary edge is part of a single cell, that
+            cell is given in a list so as to maintain the same format as the one used in the
+            :meth:`get_edges` method.
+
+        Notes
+        -----
+        The reason why consistent cell vertex numbering is demanded is because in that case the
+        boundary edges are oriented in such a way that the second vertex of a boundary edge is
+        the first vertex of the boundary edge it connects to.
+
+        Examples
+        --------
+        Let us consider the same example mesh as the one described in the :meth:`get_edges` method.
+
+        >>> mesh = TriMesh(np.array([[0, 0], [1, 0], [2, 0], [0, 2], [0, 1], [1, 1]]),
+        ...                np.array([[0, 1, 5], [4, 5, 3], [5, 4, 0], [2, 5, 1]]))
+
+        We extract the boundary of that mesh using
+
+        >>> bnd_vertices, bnd_edges = mesh.get_boundary()
+        >>> bnd_vertices
+        array([0, 1, 2, 5, 3, 4])
+        >>> bnd_edges
+        {(0, 1): [0], (1, 2): [3], (2, 5): [3], (5, 3): [1], (3, 4): [1], (4, 0): [2]}
+
+        """
+        # All edges in the mesh
+        edges = self.get_edges()
+        # Consider only those edges that are on the boundary
+        boundary_edges = {edge: cells for edge, cells in edges.items() if len(cells) == 1}
+        boundary_edges = np.array(list(boundary_edges.keys()))
+        # Preallocate the arrays holding the boundary edges and the boundary vertices
+        n_boundary_edge = np.size(boundary_edges, 0)
+        n_boundary_vertex = n_boundary_edge + 1
+        boundary_edges_interlaced = np.empty((n_boundary_edge, 2), dtype=int)
+        boundary_vertices = np.empty(n_boundary_vertex, dtype=int)
+        # Start the processing with the first boundary edge and its two vertices
+        boundary_edges_interlaced[0, :] = boundary_edges[0, :]
+        boundary_vertices[0:2] = boundary_edges_interlaced[0, :]
+        # Find the consecutive boundary edges and their vertices
+        for i in np.arange(1, n_boundary_edge):
+            # The next boundary edge starts with the last boundary vertex we found
+            next_boundary_edge_idx = np.where(boundary_edges[:, 0] == boundary_vertices[i])[0]
+            next_boundary_edge = boundary_edges[next_boundary_edge_idx, :]
+            # The next boundary vertex is the end point of this new boundary edge
+            next_boundary_vertex = next_boundary_edge[0, 1]
+            # Update the already found consecutive boundary edges and vertices
+            boundary_edges_interlaced[i, :] = next_boundary_edge
+            boundary_vertices[i+1] = next_boundary_vertex
+        # The last vertex is the same as the first one: keep only one
+        boundary_vertices = boundary_vertices[:-1]
+        # Bring the boundary edges to the same format as the set of all edges
+        boundary_edges = {tuple(edge): edges[tuple(edge)] for edge in boundary_edges_interlaced}
+        return boundary_vertices, boundary_edges
 
     @staticmethod
     def _isvector(array):

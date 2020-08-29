@@ -12,6 +12,7 @@ Classes
 
     Mesh
     TriMesh
+    Polygon
 
 Functions
 ---------
@@ -24,6 +25,7 @@ Functions
 
 """
 from abc import ABC, abstractmethod
+from math import isclose
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -847,6 +849,137 @@ def _polygon_area(x, y):
     """
     return 1/2*(sum(i*j for i, j in zip(x, y[1:]+y[:1])) -
                 sum(i*j for i, j in zip(x[1:]+x[:1], y)))
+
+
+class Polygon:
+    """Represents a polygon.
+
+    This class works as expected as long as the given polygon is `simple`, i.e. it is not
+    self-intersecting and does not contain holes.
+
+    A simple class that has `numpy` and `matplotlib` (for the visualization) as the only
+    dependencies. It does not want to provide extensive functionalities (for those, check out
+    `Shapely <https://github.com/Toblerity/Shapely>`_). The polygon is represented by its
+    vertices, given in a consecutive order.
+
+    Parameters
+    ----------
+    vertices : ndarray
+        2D numpy array with 2 columns, each row corresponding to a vertex, and the two columns
+        giving the Cartesian coordinates of the vertex.
+
+    Raises
+    ------
+    Exception
+        If all the vertices of the polygon lie along the same line.
+        If the polygon is not given in R^2.
+    ValueError
+        If the polygon does not have at least 3 vertices.
+
+    Examples
+    --------
+    Try to give a "polygon", in which all vertices are collinear
+
+    >>> poly = Polygon(np.array([[0, 0], [1, 1], [2, 2]]))  # doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+    ...
+    Exception: All vertices are collinear. Not a valid polygon.
+
+    Now we give a valid polygon:
+
+    >>> pentagon = Polygon(np.array([[2, 1], [0, 0], [0.5, 3], [-1, 4], [3, 5]]))
+
+    Use Python's `print` function to display basic information about a polygon:
+
+    >>> print(pentagon)
+    A non-convex polygon with 5 vertices, oriented clockwise.
+
+    """
+    def __init__(self, vertices):
+        n_vertex, dimension = np.shape(vertices)
+        if dimension != 2:
+            raise Exception('Polygon vertices must lie on a plane')
+        if n_vertex < 3:
+            raise ValueError('A polygon consists of at least 3 vertices.')
+        if is_collinear(vertices):
+            raise Exception('All vertices are collinear. Not a valid polygon.')
+        self.vertices = vertices
+        self.n_vertex = n_vertex
+
+    def orientation(self):
+        """Orientation of the polygon.
+
+        Returns
+        -------
+        str
+            'cw' if the polygon has clockwise orientation, 'ccw' if counter-clockwise.
+
+        """
+        cross_product = np.cross(self.vertices[1] - self.vertices[0],
+                                 self.vertices[2] - self.vertices[1])
+        return 'ccw' if cross_product > 0 else 'cw'
+
+    def is_convex(self):
+        """Decides whether the polygon is convex.
+
+        Returns
+        -------
+        bool
+            True if the polygon is convex. False otherwise.
+
+        Notes
+        -----
+        The algorithm works by checking if all pairs of consecutive edges in the polygon are
+        either all clockwise or all counter-clockwise oriented. This method is valid only for
+        simple polygons. The implementation follows `this code
+        <https://github.com/crm416/point-location/blob/01b5c0f2105237e7108730d0e0db6213c0aadfbf/
+        geo/shapes.py#L168>`_, extended for the case when two consecutive edges are collinear.
+        If the polygon was not simple, a more complicated algorithm would be needed, see e.g.
+        `here <https://stackoverflow.com/a/45372025/4892892>`_.
+
+        Examples
+        --------
+        A triangle is always convex:
+
+        >>> poly = Polygon(np.array([[1, 1], [0, 1], [0, 0]]))
+        >>> poly.is_convex()
+        True
+
+        Let us define a concave deltoid:
+
+        >>> poly = Polygon(np.array([[-1, -1], [0, 1], [1, -1], [0, 5]]))
+        >>> poly.is_convex()
+        False
+
+        Give a polygon that has two collinear edges:
+
+        >>> poly = Polygon(np.array([[0.5, 0], [1, 0], [1, 1], [0, 1], [0, 0]]))
+        >>> poly.is_convex()
+        True
+
+        """
+        target = None  # pairwise orientation of the edges, True if counter-clockwise
+        target_set = False  # True if the truth value of `target` has been set
+        for i in range(self.n_vertex):  # for every consecutive three vertices
+            A = self.vertices[i]
+            B = self.vertices[(i + 1) % self.n_vertex]
+            C = self.vertices[(i + 2) % self.n_vertex]
+            cross_product = np.cross(B - A, C - B)  # the orientation is implied from it
+            if not isclose(cross_product, 0):  # otherwise the orientation is not accurate
+                is_ccw = cross_product > 0
+                if not target_set:
+                    target = is_ccw
+                    target_set = True
+                else:
+                    if is_ccw != target:  # not all pairs of edges have the same orientation
+                        return False
+        return True
+
+    def __str__(self):
+        convexity = ' convex' if self.is_convex() else ' non-convex'
+        orientation = ' clockwise' if self.orientation() == 'cw' else ' counter-clockwise'
+        return 'A' + convexity + ' polygon with ' + str(self.n_vertex) + \
+               ' vertices, oriented' + orientation + '.'
 
 
 def is_collinear(points, tol=None):

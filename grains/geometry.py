@@ -895,6 +895,12 @@ class Polygon:
     A non-convex polygon with 5 vertices, oriented clockwise.
 
     """
+    # Default settings for plotting the polygon
+    plot_options = {'ax': None,  # Axes object the mesh is plotted
+                    'show_axes': True,  # show the coordinate axes
+                    'vertex_labels': False  # show the vertex numbers
+                    }
+
     def __init__(self, vertices):
         n_vertex, dimension = np.shape(vertices)
         if dimension != 2:
@@ -974,6 +980,53 @@ class Polygon:
                     if is_ccw != target:  # not all pairs of edges have the same orientation
                         return False
         return True
+
+    def plot(self, *args, **kwargs):
+        """Plots the polygon.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            The `Axes` instance the polygon resides in. The default is None, in which case a new
+            `Axes` within a new figure is created.
+
+        Other Parameters
+        ----------------
+        show_axes : bool, optional
+            If True, the coordinate system is shown. The default is True.
+        vertex_labels : bool, optional
+            If True, vertex labels are shown. The default is False.
+        args, kwargs : optional
+            Additional arguments and keyword arguments to be specified. Those arguments are the
+            ones supported by :meth:`matplotlib.axes.Axes.plot`.
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        Consider the pentagon used in the example of the constructor. Plot it in black with
+        red diamond symbols representing its vertices. Moreover, display the vertex numbers
+        and do not show the coordinate system.
+
+        >>> pentagon = Polygon(np.array([[2, 1], [0, 0], [0.5, 3], [-1, 4], [3, 5]]))
+        >>> pentagon.plot('k-d', vertex_labels=True, markerfacecolor='r', show_axes=False)
+        >>> plt.show()
+
+        """
+        method_options, matplotlib_options = parse_kwargs(kwargs, Polygon.plot_options)
+        ax = method_options['ax'] if method_options['ax'] else plt.figure().add_subplot()
+        ax.set_aspect('equal')
+        vertex_idx = np.arange(-1, self.n_vertex)  # close the polygon
+        ax.plot(self.vertices[vertex_idx, 0], self.vertices[vertex_idx, 1],
+                *args, **matplotlib_options)
+        if method_options['vertex_labels']:  # show the vertex numbers
+            for label, vertex in enumerate(self.vertices, 1):
+                x, y = vertex
+                ax.text(x, y, str(label))
+        if not method_options['show_axes']:  # do not show the axes
+            ax.set_axis_off()
 
     def __str__(self):
         convexity = ' convex' if self.is_convex() else ' non-convex'

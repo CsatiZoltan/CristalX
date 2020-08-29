@@ -17,6 +17,7 @@ Functions
 ---------
 .. autosummary::
 
+    is_collinear
     _polygon_area
 
 """
@@ -844,3 +845,50 @@ def _polygon_area(x, y):
     """
     return 1/2*(sum(i*j for i, j in zip(x, y[1:]+y[:1])) -
                 sum(i*j for i, j in zip(x[1:]+x[:1], y)))
+
+
+def is_collinear(points, tol=None):
+    """Decides whether a set of points is collinear.
+
+    Works in any dimensions.
+
+    Parameters
+    ----------
+    points : ndarray
+        2D numpy array with N columns, each row corresponding to a point, and the N columns
+        giving the Cartesian coordinates of the point.
+
+    tol : float, optional
+        Tolerance value passed to numpy's `matrix_rank` function. This tolerance gives the
+        threshold below which SVD values are considered zero.
+
+    Returns
+    -------
+    bool
+        True for collinear points.
+
+    See Also
+    --------
+    :func:`numpy.linalg.matrix_rank`
+
+    Notes
+    -----
+    The algorithm for three points is from `Tim Davis <https://nl.mathworks.com/matlabcentral/
+    discussions/b-loren/127448-loren-on-the-art-of-matlab-collinearity/21239#reply_21239>`_.
+
+    Examples
+    --------
+    Two points are always collinear
+    >>> is_collinear(np.array([[1, 0], [1, 5]]))
+    True
+
+    Three points in 3D which are supposed to be collinear (returns false due to numerical error)
+    >>> is_collinear(np.array([[0, 0, 0], [1, 1, 1], [5, 5, 5]]), tol=0)
+    False
+
+    The previous example with looser tolerance
+    >>> is_collinear(np.array([[0, 0, 0], [1, 1, 1], [5, 5, 5]]), tol=1e-14)
+    True
+
+    """
+    return np.linalg.matrix_rank(points - points[0, :], tol=tol) < 2

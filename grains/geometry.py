@@ -912,6 +912,78 @@ class Polygon:
         self.vertices = vertices
         self.n_vertex = n_vertex
 
+    def area(self):
+        """Signed area of the polygon.
+
+        The signed area is computed by the shoelace formula [1]_
+
+        .. math::
+            A = \\frac{1}{2}\sum\limits_{i=1}^N (x_i y_{i+1} - x_{i+1} y_i)
+
+        Returns
+        -------
+        float
+            Signed area.
+
+        References
+        ----------
+        .. [1] http://paulbourke.net/geometry/polygonmesh/centroid.pdf
+
+        Examples
+        --------
+        >>> poly = Polygon(np.array([[0, 0], [1, 0], [1, 1], [-1, 1]]))
+        >>> poly.area()
+        1.5
+        >>> poly = Polygon(np.array([[-1, 1], [1, 1], [1, 0], [0, 0]]))
+        >>> poly.area()
+        -1.5
+
+        """
+        vertex_idx = np.arange(-1, self.n_vertex)  # close the polygon
+        x = self.vertices[vertex_idx, 0]
+        y = self.vertices[vertex_idx, 1]
+        return 1/2*sum(x[i]*y[i+1] - x[i+1]*y[i] for i in range(self.n_vertex))
+
+    def centroid(self):
+        """Centroid of the polygon.
+
+        The centroid is computed according to the following formula [2]_
+
+        .. math::
+            C_x = \\frac{1}{6A}\sum\limits_{i=1}^N (x_i + x_{i+1})(x_i y_{i+1} - x_{i+1} y_i)
+
+            C_y = \\frac{1}{6A}\sum\limits_{i=1}^N (y_i + y_{i+1})(x_i y_{i+1} - x_{i+1} y_i)
+
+        where :math:`A` is the signed area determined by the :meth:`area` method and :math:`x_i,
+        y_i` are the vertex coordinates with :math:`x_{N+1}=x_1` and :math:`y_{N+1}=y_1`.
+
+        Returns
+        -------
+        tuple
+            2-tuple, the coordinates of the centroid.
+
+        References
+        ----------
+        .. [2] http://paulbourke.net/geometry/polygonmesh/centroid.pdf
+
+        Examples
+        --------
+        >>> poly = Polygon(np.array([[0, 0], [0, 1], [1, 1], [1, 0]]))
+        >>> poly.centroid()
+        (0.5, 0.5)
+        >>> poly = Polygon(np.array([[2, 1], [0, 0], [0.5, 3], [-1, 4], [3, 5]]))
+        >>> poly.centroid()  # doctest: +ELLIPSIS
+        (1.254..., 2.807...)
+
+        """
+        vertex_idx = np.arange(-1, self.n_vertex)  # close the polygon
+        x = self.vertices[vertex_idx, 0]
+        y = self.vertices[vertex_idx, 1]
+        a = self.area()
+        c_x = sum((x[i] + x[i+1]) * (x[i]*y[i+1] - x[i+1]*y[i]) for i in range(self.n_vertex))
+        c_y = sum((y[i] + y[i+1]) * (x[i]*y[i+1] - x[i+1]*y[i]) for i in range(self.n_vertex))
+        return 1/(6*a)*c_x, 1/(6*a)*c_y
+
     def orientation(self):
         """Orientation of the polygon.
 

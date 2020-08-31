@@ -25,7 +25,7 @@ Functions
 
 """
 from abc import ABC, abstractmethod
-from math import isclose
+from math import sqrt, isclose, pi
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -983,6 +983,68 @@ class Polygon:
         c_x = sum((x[i] + x[i+1]) * (x[i]*y[i+1] - x[i+1]*y[i]) for i in range(self.n_vertex))
         c_y = sum((y[i] + y[i+1]) * (x[i]*y[i+1] - x[i+1]*y[i]) for i in range(self.n_vertex))
         return 1/(6*a)*c_x, 1/(6*a)*c_y
+
+    def diameter(self, definition='set'):
+        """Diameter of the polygon.
+
+        Multiple definitions are supported for the diameter:
+
+        - `Diameter of a set`. The polygon is considered as a set :math:`A` of points comprised
+        of the polygon vertices. Let :math:`(X,d)` be a metric space. The diameter of the set is
+        defined as
+
+        .. math::
+            \mathrm{diam}(A) = \sup\{ d(x,y)\ |\ x, y \in A\}.
+            :label: setDiameter
+
+        Here, the Euclidean metric is used.
+
+        - `Equivalent diameter`. Diameter of the circle of the same area as that of the polygon.
+
+        Parameters
+        ----------
+        definition : {'set', 'equivalent'}, optional
+            The default is 'set'.
+
+        Returns
+        -------
+        float
+            Diameter of the polygon, based on the chosen definition.
+
+        Notes
+        -----
+        When :code:`definition` is 'set', computing the diameter by :math:numref:`setDiameter` is
+        `equivalent <https://cs.stackexchange.com/questions/23646/why-are-the-two-farthest-points
+        -vertices-of-the-convex-hull>`_ to determining the distance of the furthest points in the
+        convex hull of :math:`A`. Therefore, the diameter will always be the distance between two
+        points on the convex hull of :math:`A`. Then for each vertex of the hull finding which
+        other hull vertex is farthest away from it, the `rotating caliper` algorithm can be used.
+        Our brute-force method is simpler as it needs neither the convex hull nor the rotating
+        caliper algorithm: all the pairwise distances among the polygon vertices are computed and
+        the largest one is chosen. Pair of points a maximum distance apart. Since the polygons in
+        our applications do not have that many vertices, this simplistic approach is a viable
+        alternative.
+
+        Examples
+        --------
+        >>> poly = Polygon(np.array([[2, 5], [0, 1], [4, 3], [4, 5]]))
+        >>> poly.diameter('set')  # doctest: +ELLIPSIS
+        5.6568542...
+        >>> poly.diameter('equivalent')  # doctest: +ELLIPSIS
+        3.1915382...
+        >>> poly = Polygon(np.array([[2, 1], [3, -4], [-1, -1], [-4, -2], [-3, 0]]))
+        >>> poly.diameter('set')  # doctest: +ELLIPSIS
+        7.2801098...
+        >>> poly.diameter('equivalent')  # doctest: +ELLIPSIS
+        4.2967398...
+
+        """
+        if definition == 'set':
+            return sqrt(np.max(distance_matrix(self.vertices)))
+        elif definition == 'equivalent':
+            return sqrt(4*abs(self.area())/pi)
+        else:
+            raise ValueError('Diameter definition unknown. Choose between "set" or "equivalent".')
 
     def orientation(self):
         """Orientation of the polygon.

@@ -343,13 +343,13 @@ def plot_grain_characteristic(characteristic, centers, interpolation='linear',
     n = np.size(characteristic)
     characteristic = np.reshape(characteristic, (n,))
     parsed_options, unknown_options = \
-        parse_kwargs(kwargs, {'center_marker': 'P', 'show_axis': False})
+        parse_kwargs(kwargs, {'center_marker': 'P', 'show_axis': False, 'ax': None})
     if unknown_options:
         warnings.warn('The following keyword arguments are not recognized: {0}.'.format(list(
             unknown_options.keys())), Warning)
     # Grid on which the data is interpolated
-    x_range = (np.min(centers), np.max(centers))
-    y_range = (np.min(centers), np.max(centers))
+    x_range = (np.min(centers[:, 0]), np.max(centers[:, 0]))
+    y_range = (np.min(centers[:, 1]), np.max(centers[:, 1]))
     x, y = np.mgrid[x_range[0]:x_range[1]:complex(0, grid_size[0]),
                     y_range[0]:y_range[1]:complex(0, grid_size[1])]
     # Interpolate the grain characteristic at the grid points
@@ -359,8 +359,9 @@ def plot_grain_characteristic(characteristic, centers, interpolation='linear',
     ff = f.copy()
     ff[outside_region] = f_nearest[outside_region]
     # Plot the distribution of the grain characteristic
-    fig, ax = plt.subplots()
-    image = ax.imshow(ff, interpolation='none', extent=(*x_range, *y_range))
+    ax = parsed_options['ax'] if parsed_options['ax'] else plt.figure().add_subplot()
+    # fig, ax = plt.subplots()
+    image = ax.imshow(np.flipud(ff.T), interpolation='none', extent=(*x_range, *y_range))
     if not parsed_options['show_axis']:
         plt.axis('off')
     plt.colorbar(image)

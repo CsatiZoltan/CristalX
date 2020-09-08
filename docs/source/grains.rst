@@ -76,14 +76,6 @@ grains.profiling module
    :undoc-members:
    :show-inheritance:
 
-grains.salome module
---------------------
-
-.. automodule:: grains.salome
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 grains.segmentation module
 --------------------------
 

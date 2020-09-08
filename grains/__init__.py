@@ -21,3 +21,8 @@ try:
 except ImportError:
     HAS_TABLES = False
 
+try:
+    import pyinstrument
+    HAS_PYINSTRUMENT = True
+except ImportError:
+    HAS_PYINSTRUMENT = False

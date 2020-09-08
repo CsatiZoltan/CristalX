@@ -1,0 +1,9 @@
+numpy~=1.18.1
+matplotlib~=3.1.3
+scikit-image~=0.16.2
+skan~=0.8
+scipy~=1.4.1
+tables~=3.6.1
+pandas~=1.0.1
+networkx~=2.4
+dfgui~=0.1

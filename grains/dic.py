@@ -12,6 +12,7 @@ Classes
 
 """
 import numpy as np
+from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
 
 from grains.geometry import TriMesh
@@ -89,7 +90,7 @@ class DIC:
         ax.set_aspect('equal')
         ax.imshow(field)
 
-    def plot_strain(self, component, minval=None, maxval=None, legend=True):
+    def plot_strain(self, component, minval=None, maxval=None, colorbar=True):
         """Plots a component of the infinitesimal strain tensor.
 
         The partial derivatives of the displacement field are computed with numerical
@@ -112,6 +113,12 @@ class DIC:
                                    \\varepsilon_{11} & \\varepsilon_{12} \\\\
                                    \\varepsilon_{21} & \\varepsilon_{22}
                                \\end{pmatrix}
+        minval, maxval : float, optional
+            Set the color scaling for the image by fixing the values that map to the colormap
+            color limits. If :code:`minval` is not provided, the limit is determined from the
+            minimum value of the data. Similarly for :code:`maxval`.
+        colorbar : bool, optional
+            If True, a horizontal colorbar is placed below the strain map. The default is True.
 
         Returns
         -------
@@ -135,7 +142,7 @@ class DIC:
         else:
             raise ValueError('Incorrect strain tensor component.')
         plt.matshow(strain, interpolation='none', vmin=minval, vmax=maxval)
-        if legend:
+        if colorbar:
             cbar = plt.colorbar(orientation='horizontal', format='%.2f', aspect=100,
                                 label=label)
             cbar.ax.set_xlabel(label, fontsize=30)
@@ -161,6 +168,194 @@ class DIC:
         """
         self.origin = origin
         self.scale = pixels_per_physicalunit
+
+    def project_onto_mesh(self, nodes, method='linear'):
+        """Project the experimental displacement field onto a mesh.
+
+        Parameters
+        ----------
+        nodes : ndarray
+            2D numpy array with 2 columns, each row corresponding to a node of the mesh,
+            and the two columns giving the Cartesian coordinates of the nodes.
+
+        Returns
+        -------
+        u_nodes, v_nodes : ndarray
+            1D numpy arrays (vectors), the components of the projected displacement field at the
+            given :code:`nodes`.
+        method : {'nearest', 'linear', 'cubic'}, optional
+            Type of the interpolation. The default is linear.
+
+        See Also
+        --------
+        project_onto_grid
+
+        Examples
+        --------
+        Suppose we have measured field data, obtained by DIC. The experimental field values are
+        obtained as an image. The pixel centers of this image form a grid, each grid point having
+        an associated scalar value, the value of the measured field. In this example, we pretend
+        that the measured field is given as a function. The DIC grid and the measured field values
+        can be seen in the upper left and lower left figures, respectively.
+
+        >>> x_grid, y_grid = np.mgrid[-1:1:100j, 1:2:50j]
+        >>> exact_solution = lambda x, y: 1 - (x + y**2) * np.sign(x)
+        >>> grid = DIC(exact_solution(x_grid, y_grid).T, exact_solution(x_grid,y_grid).T)
+
+        The finite element solution is obtained at the nodes (upper right figure) of the mesh.
+        Here, we assumed that the nodes are sampled from a uniformly random distribution on
+        :math:`[-1,1] \\times [1, 2]`.
+
+        >>> n_nodes = 100  # modify this to see how good the interpolated solution is
+        >>> mesh = TriMesh(*TriMesh.sample_mesh(1, n_nodes))
+
+        For the sake of this example, we also assume that the nodal values are "exact", i.e. they
+        are the function values at the nodes. In reality, of course, this will not be the case,
+        but this allows us to investigate the effect moving from the FE mesh to the DIC grid.
+
+        >>> grid.set_transformation((-1, 2), 50)
+        >>> fe_values = exact_solution(mesh.vertices[:, 0], mesh.vertices[:, 1])
+        >>> interpolated = grid.project_onto_mesh(mesh.vertices, 'nearest')
+
+        The FE solution available at the nodes are interpolated at the DIC grid points, as shown
+        in the lower right figure. Interpolation with continuous functions cannot resolve well the
+        discontinuity present in the "exact solution", i.e. in the measurement data. A discontinuous
+        manufactured solution was intentionally prepared to illustrate this.
+
+        >>> ax = []
+        >>> ax.append(plt.subplot(221))
+        >>> grid.plot_physicalgrid(ax[0])
+        >>> plt.title('DIC grid')
+        >>> ax.append(plt.subplot(222))
+        >>> mesh.plot('k.', ax=ax[1], markersize=1)
+        >>> plt.title('FE nodes')
+        >>> ax.append(plt.subplot(223))
+        >>> plt.imshow(exact_solution(x_grid, y_grid).T, extent=(-1, 1, 1, 2), origin='lower',
+        ...            vmin=-4, vmax = 5)
+        >>> plt.title('Exact solution on the DIC grid')
+        >>> ax.append(plt.subplot(224))
+        >>> interpolated[0][np.isnan(interpolated[0])] = 0
+        >>> mesh.associate_field(interpolated[0])
+        >>> mesh.plot_field(0, show_mesh=False, ax=ax[3])
+        >>> plt.title('FE solution interpolated at the DIC grid')
+        >>> plt.show()
+
+        You are invited to modify this example to simulate a finer mesh by increasing
+        :code:`n_nodes`. Also try different interpolation techniques.
+
+        """
+        # Coordinate values spanning the pixel grid
+        image_height, image_width = np.shape(self.u)
+        X = np.arange(0, image_height)
+        Y = np.arange(0, image_width)
+        # Coordinate values spanning the physical grid
+        x = self.origin[0] + Y/self.scale
+        y = self.origin[1] - np.flip(X)/self.scale
+        # Interpolate the grid values at the nodes
+        xx, yy = np.meshgrid(x, y)
+        u_nodes = griddata((np.reshape(xx, (len(x) * len(y),)), np.reshape(yy, (len(x) * len(y),))),
+                           np.reshape(self.u, (len(x) * len(y),)), nodes, method=method)
+        v_nodes = griddata((np.reshape(xx, (len(x) * len(y),)), np.reshape(yy, (len(x) * len(y),))),
+                           np.reshape(self.v, (len(x) * len(y),)), nodes, method=method)
+        return u_nodes, v_nodes
+
+    def project_onto_grid(self, nodes, nodal_values, method='linear'):
+        """Project a numerically computed field onto the DIC grid.
+
+        .. todo::
+            Is there a way to execute the docstring in Sphinx and embed the image?
+
+        .. todo::
+            Use the example code of this method to create the plotting method of this class.
+            When done, rewrite the example with the methods.
+
+        Parameters
+        ----------
+        nodes : ndarray
+            2D numpy array with 2 columns, each row corresponding to a node of the mesh,
+            and the two columns giving the Cartesian coordinates of the nodes.
+        nodal_values : ndarray
+            1D numpy array (vector), the numerically computed field at the nodes of the mesh.
+        method : {'nearest', 'linear', 'cubic'}, optional
+            Type of the interpolation. The default is linear.
+
+        Returns
+        -------
+        ndarray
+            2D numpy array, the projected field values at the physical DIC grid points.
+
+        See Also
+        --------
+        project_onto_mesh,
+        :func:`scipy.interpolate.griddata`
+
+        Examples
+        --------
+        Suppose we have measured field data, obtained by DIC. The experimental field values are
+        obtained as an image. The pixel centers of this image form a grid, each grid point having
+        an associated scalar value, the value of the measured field. In this example, we pretend
+        that the measured field is given as a function. The DIC grid and the measured field values
+        can be seen in the upper left and lower left figures, respectively.
+
+        >>> x_grid, y_grid = np.mgrid[-1:1:100j, 1:2:50j]
+        >>> exact_solution = lambda x, y: 1 - (x + y**2) * np.sign(x)
+        >>> grid = DIC(exact_solution(x_grid, y_grid).T, exact_solution(x_grid,y_grid).T)
+        >>> grid.set_transformation((-1, 2), 50)
+
+        The finite element solution is obtained at the nodes (upper right figure) of the mesh.
+        Here, we assumed that the nodes are sampled from a uniformly random distribution on
+        :math:`[-1,1] \\times [-1, 1]`.
+
+        >>> n_nodes = 100  # modify this to see how good the interpolated solution is
+        >>> fe_nodes_x = 2*np.random.rand(n_nodes) - 1
+        >>> fe_nodes_y = np.random.rand(n_nodes) + 1
+        >>> fe_nodes = np.stack((fe_nodes_x, fe_nodes_y), axis=1)
+
+        For the sake of this example, we also assume that the nodal values are "exact", i.e. they
+        are the function values at the nodes. In reality, of course, this will not be the case,
+        but this allows us to investigate the effect moving from the FE mesh to the DIC grid.
+
+        >>> fe_values = exact_solution(fe_nodes_x, fe_nodes_y)
+        >>> interpolated = grid.project_onto_grid(fe_nodes, fe_values)
+
+        The FE solution available at the nodes are interpolated at the DIC grid points, as shown
+        in the lower right figure. Interpolation with continuous functions cannot resolve well the
+        discontinuity present in the "exact solution", i.e. in the measurement data. A discontinuous
+        manufactured solution was intentionally prepared to illustrate this.
+
+        >>> ax = []
+        >>> ax.append(plt.subplot(221))
+        >>> plt.plot(x_grid, y_grid, 'k.', ms=1)
+        >>> plt.title('DIC grid')
+        >>> ax.append(plt.subplot(222))
+        >>> plt.plot(fe_nodes_x, fe_nodes_y, 'k.', ms=1)
+        >>> plt.title('FE nodes')
+        >>> ax.append(plt.subplot(223))
+        >>> plt.imshow(exact_solution(x_grid, y_grid).T, extent=(-1, 1, 1, 2), origin='lower',
+        ...            vmin=-4, vmax = 5)
+        >>> plt.title('Exact solution on the DIC grid')
+        >>> ax.append(plt.subplot(224))
+        >>> plt.imshow(interpolated, extent=(-1, 1, 1, 2), origin='lower', vmin=-4, vmax = 5)
+        >>> plt.title('FE solution interpolated at the DIC grid')
+        >>> plt.tight_layout()
+        >>> for a in ax:
+        ...     a.set_aspect('equal', 'box')
+        >>> plt.show()
+
+        You are invited to modify this example to simulate a finer mesh by increasing
+        :code:`n_nodes`. Also try different interpolation techniques.
+
+        """
+        # Coordinate values spanning the pixel grid
+        image_height, image_width = np.shape(self.u)
+        X = np.arange(0, image_height)
+        Y = np.arange(0, image_width)
+        # Coordinate values spanning the physical grid
+        x = self.origin[0] + Y/self.scale
+        y = self.origin[1] - np.flip(X)/self.scale
+        # Interpolate the nodal values at the grid points
+        xx, yy = np.meshgrid(x, y)
+        return griddata(nodes, nodal_values, (xx, yy), method=method)
 
     def plot_pixelgrid(self, ax=None):
         """Plots the DIC grid in the image coordinate system.
@@ -218,7 +413,7 @@ class DIC:
 
         Returns
         -------
-        axes : matplotlib.axes.Axes
+        ax : matplotlib.axes.Axes
 
         See Also
         --------
@@ -279,7 +474,8 @@ class DIC:
 
         Examples
         --------
-        Let us create a grid and a random mesh.
+        Let us create a grid and a random mesh (the same as in the `Examples` section of the
+        :meth:`project_onto_mesh`).
 
         >>> x_grid, y_grid = np.mgrid[-1:1:100j, 1:2:50j]
         >>> exact_solution = lambda x, y: 1 - (x + y**2) * np.sign(x)

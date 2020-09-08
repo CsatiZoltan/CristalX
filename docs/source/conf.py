@@ -57,6 +57,11 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+# Explicitly define the main file (https://stackoverflow.com/a/56448499/4892892)
+# so that it works with older Sphinx versions as well
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-master_doc
+master_doc = 'index'
+
 # Napoleon settings
 napoleon_google_docstring = False
 napoleon_include_private_with_doc = True

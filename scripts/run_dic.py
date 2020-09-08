@@ -6,7 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from grains import HAS_TABLES
-
+from grains.geometry import TriMesh
+from grains.dic import DIC
 
 show_plots = True  # set to False to prevent from showing the plots
 
@@ -22,6 +23,7 @@ params = {'text.usetex': True,
 plt.rcParams.update(params)
 # plt.rcParams
 
+# Load the experimental data
 dic_snapshot = join(data_dir, '1_dic_field.npy')
 if path.isfile(dic_snapshot):
     u_restricted, v_restricted, _ = np.load(dic_snapshot, allow_pickle=True)
@@ -61,11 +63,31 @@ else:
             raise ImportError('The PyTables package is needed to load the dataset.')
     else:
         raise Exception('Measurement dataset {0} not found.'.format(dic_data))
-
+dic = DIC(u_restricted, v_restricted)
 if show_plots:
     # Show the axial strain on the cropped region
-    plt.matshow(np.gradient(u_restricted)[1], interpolation='none', vmin=0, vmax=0.2)
-    cbar = plt.colorbar(orientation='horizontal', format='%.2f', aspect=100,
-                        label=r'$\varepsilon_{xx}$')
-    cbar.ax.set_xlabel(r'$\varepsilon_{xx}$', fontsize=30)
+    dic.plot_strain((1, 1), minval=0, maxval=0.2)
     plt.show()
+
+# Set the scale, i.e. the physical length corresponding to the image data
+dic.set_transformation((0, 0), 45.18)
+dic.plot_physicalgrid()
+plt.show()
+
+# Superimpose the meshed domain of the numerical problem and the DIC grid
+mesh_file = join(data_dir, '1_mesh_extended_scaled.npz')
+with np.load(mesh_file, allow_pickle=True) as mesh:
+    if np.alltrue([variable_name in {'nodes', 'elements', 'element_groups', 'node_groups'} for
+                   variable_name in mesh]):
+        nodes = mesh['nodes']
+        elements = mesh['elements']
+        element_groups = mesh['element_groups']
+        node_groups = mesh['node_groups']
+    else:
+        raise Exception('Mesh must contain variables "nodes", "elements", "element_groups" and '
+                        '"node_groups".')
+mesh = TriMesh(nodes, elements)
+ax = dic.plot_superimposedmesh(mesh)
+ax.set_xlim(17.25, 19.25)
+ax.set_ylim(-10.8, -9.4)
+plt.show()

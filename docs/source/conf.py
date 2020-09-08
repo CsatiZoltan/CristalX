@@ -46,7 +46,8 @@ extensions = [
     'sphinx_copybutton',
     'sphinx_toggleprompt',
     'hoverxref.extension',
-    'sphinx_tabs.tabs'
+    'sphinx_tabs.tabs',
+    'matplotlib.sphinxext.plot_directive'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -91,6 +92,10 @@ toggleprompt_offset_right = 25
 
 # todo settings
 todo_include_todos = True
+
+# matplotlib plot_directive
+plot_include_source = True
+plot_html_show_source_link = True
 
 # inheritance_diagram settings
 # See the available settings at https://graphviz.org/doc/info/attrs.html

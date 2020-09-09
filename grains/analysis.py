@@ -6,6 +6,23 @@ segmented grain-based microstructures.
 All the examples assume that the modules `numpy` and `matplotlib.pyplot` were imported as `np`
 and `plt`, respectively.
 
+Classes
+-------
+.. autosummary::
+    :nosignatures:
+    :toctree: classes/
+
+    Analysis
+
+Functions
+---------
+.. autosummary::
+    :toctree: functions/
+
+    feret_diameter
+    plot_prop
+    plot_grain_characteristic
+
 """
 
 from math import sqrt

@@ -7,6 +7,7 @@ Classes
 -------
 .. autosummary::
     :nosignatures:
+    :toctree: classes/
 
     DIC
 

@@ -6,6 +6,25 @@ helper functions reside in the proper module. For example, a function that works
 list goes here, but a computational geometry algorithm goes to the **geometry** module. The
 functions in the **utils** module can be interesting for other projects too, partly because of
 their general scope, and partly because of the few dependencies.
+
+Functions
+---------
+.. autosummary::
+    :nosignatures:
+    :toctree: functions/
+
+    duplicates
+    toggle
+    index_list
+    flatten_list
+    argsorted
+    map_inplace
+    non_unique
+    parse_kwargs
+    compress
+    decompress
+    decompress_inmemory
+
 """
 
 import os

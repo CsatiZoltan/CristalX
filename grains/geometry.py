@@ -9,6 +9,7 @@ Classes
 -------
 .. autosummary::
     :nosignatures:
+    :toctree: classes/
 
     Mesh
     TriMesh
@@ -17,6 +18,7 @@ Classes
 Functions
 ---------
 .. autosummary::
+    :toctree: functions/
 
     is_collinear
     squared_distance
@@ -592,13 +594,16 @@ class TriMesh(Mesh):
         rectangular domain [-1, 1] x [1, 2]. These points will constitute the vertices of the
         mesh, while its cells are the Delaunay triangles on the vertices.
 
-        >>> msh = TriMesh(*TriMesh.sample_mesh(1))
+        .. plot::
 
-        The cells are drawn in greeen, in 3 points of line width, and the vertices of the mesh
-        are shown in blue.
+            >>> from grains.geometry import TriMesh
+            >>> msh = TriMesh(*TriMesh.sample_mesh(1))
 
-        >>> msh.plot('go-', linewidth=3, markerfacecolor='b', vertex_labels=True)
-        >>> plt.show()
+            The cells are drawn in greeen, in 3 points of line width, and the vertices of the mesh
+            are shown in blue.
+
+            >>> msh.plot('go-', linewidth=3, markerfacecolor='b', vertex_labels=True)
+            >>> plt.show()
 
         Notes
         -----

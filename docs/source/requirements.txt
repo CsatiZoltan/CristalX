@@ -1,0 +1,9 @@
+sphinx==2.4.4
+sphinx-autoapi
+sphinx_rtd_theme
+sphinxcontrib-apidoc
+sphinx-tabs
+sphinx-hoverxref
+sphinx-toggleprompt
+sphinx-copybutton
+sphinx-git

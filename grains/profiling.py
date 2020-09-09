@@ -5,6 +5,7 @@ This module implements profiling facilities so that user code can be tested for 
 Functions
 ---------
 .. autosummary::
+    :toctree: functions/
 
     profile
 

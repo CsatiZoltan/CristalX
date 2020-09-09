@@ -6,7 +6,7 @@ The functions were tested on the MEDCoupling API, version 9.4.0.
 .. todo:: Support renumbering (https://docs.salome-platform.org/latest/dev/MEDCoupling/user/html/data_optimization.html).
 
 Getting help:
--------------
+
 * This module relies on the Python interface of MEDCoupling. `Click here <https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/index.html>`_ for the latest documentation.
 * `User's manual <https://docs.salome-platform.org/latest/dev/MEDCoupling/user/html/index.html>`_ for the Python interface
 * To know more about the MED file format, which is a specialization of HDF5, see the `documentation <https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/med-file.html>`_.
@@ -17,6 +17,17 @@ Getting help:
 * A (mostly English) `tutorial <https://docs.salome-platform.org/latest/dev/MEDCoupling/tutorial/index.html>`_ for the Python interface to MEDCoupling is also useful.
   Particularly interesting are the `mesh manipulation examples <https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/medcouplingpyexamples.html#ExamplesMeshes>`_
 * `Main page <https://salome-platform.org/user-section/documentation/current-release>`_ of the documentation
+
+Functions
+---------
+.. autosummary::
+    :nosignatures:
+    :toctree: functions/
+
+    read_mesh
+    get_nodes
+    get_elements
+
 """
 
 import warnings

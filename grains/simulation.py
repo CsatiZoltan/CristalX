@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Mar 25 08:31:08 2020
+Functions
+---------
+.. autosummary::
+    :nosignatures:
+    :toctree: functions/
 
-@author: zoltan
+    data_Pierre
+    hallpetch_constants
+    hallpetch
+    hallpetch_plot
+    change_domain
+
 """
 
 from math import sqrt
@@ -14,7 +23,7 @@ from matplotlib.patches import Rectangle
 
 
 def data_Pierre():
-    """
+    """Yield stresses and average grain diameters from Pierre's thesis.
 
     Returns
     -------

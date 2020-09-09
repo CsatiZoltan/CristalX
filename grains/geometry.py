@@ -9,6 +9,7 @@ Classes
 -------
 .. autosummary::
     :nosignatures:
+    :toctree: classes/
 
     Mesh
     TriMesh
@@ -17,6 +18,7 @@ Classes
 Functions
 ---------
 .. autosummary::
+    :toctree: functions/
 
     is_collinear
     squared_distance

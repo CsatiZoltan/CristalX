@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Mar 27 08:36:44 2020
+Classes
+-------
+.. autosummary::
+    :nosignatures:
+    :toctree: classes/
 
-@author: zoltan
+    SkeletonGeometry
+    QuadSkeletonGeometry
+    TriSkeletonGeometry
+    FixedDict
+    OOF2
+
 """
-
-
 import os.path
 import re
 from collections import namedtuple

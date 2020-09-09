@@ -27,6 +27,7 @@ Classes
 -------
 .. autosummary::
     :nosignatures:
+    :toctree: classes/
 
     Geometry
     Material
@@ -35,6 +36,7 @@ Classes
 Functions
 ---------
 .. autosummary::
+    :toctree: functions/
 
     extract
     validate_file

@@ -16,6 +16,28 @@ manipulations:
 - `plot_splinegons`
 - `splinegonize`
 
+Functions
+---------
+.. autosummary::
+    :toctree: functions/
+
+    build_skeleton
+    skeleton2regions
+    polygon_orientation
+    branches2boundary
+    region_as_polygon
+    polygonize
+    branches2splines
+    fit_spline
+    region_as_splinegon
+    splinegonize
+    regions2step
+    plot_splinegons
+    write_step_file
+    plot_polygon
+    overlay_regions
+
+
 """
 
 import os

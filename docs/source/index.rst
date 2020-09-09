@@ -1,6 +1,8 @@
 Welcome to the documentation!
 =============================
 
+Global intro
+
 .. toctree::
    :maxdepth: 2
    :caption: Getting started
@@ -28,10 +30,9 @@ Welcome to the documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: API reference
+   :caption: API
 
-   genindex
-   py-modindex
+   api
 
 .. toctree::
    :maxdepth: 2

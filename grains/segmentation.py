@@ -1,6 +1,15 @@
 """
 This module contains the Segmentation class, responsible for the image
 segmentation of grain-based materials (rocks, metals, etc.)
+
+Classes
+-------
+.. autosummary::
+    :nosignatures:
+    :toctree: classes/
+
+    Segmentation
+
 """
 
 import os.path as path

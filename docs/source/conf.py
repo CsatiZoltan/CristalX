@@ -97,6 +97,9 @@ todo_include_todos = True
 plot_include_source = True
 plot_html_show_source_link = True
 
+# autosummary settings
+autosummary_generate = True
+
 # inheritance_diagram settings
 # See the available settings at https://graphviz.org/doc/info/attrs.html
 #inheritance_graph_attrs = dict(rankdir="LR", size='"6.0, 8.0"',

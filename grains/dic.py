@@ -199,47 +199,51 @@ class DIC:
         that the measured field is given as a function. The DIC grid and the measured field values
         can be seen in the upper left and lower left figures, respectively.
 
-        >>> x_grid, y_grid = np.mgrid[-1:1:100j, 1:2:50j]
-        >>> exact_solution = lambda x, y: 1 - (x + y**2) * np.sign(x)
-        >>> grid = DIC(exact_solution(x_grid, y_grid).T, exact_solution(x_grid,y_grid).T)
+        .. plot::
 
-        The finite element solution is obtained at the nodes (upper right figure) of the mesh.
-        Here, we assumed that the nodes are sampled from a uniformly random distribution on
-        :math:`[-1,1] \\times [1, 2]`.
+            >>> from grains.dic import DIC
+            >>> from grains.geometry import TriMesh
+            >>> x_grid, y_grid = np.mgrid[-1:1:100j, 1:2:50j]
+            >>> exact_solution = lambda x, y: 1 - (x + y**2) * np.sign(x)
+            >>> grid = DIC(exact_solution(x_grid, y_grid).T, exact_solution(x_grid,y_grid).T)
 
-        >>> n_nodes = 100  # modify this to see how good the interpolated solution is
-        >>> mesh = TriMesh(*TriMesh.sample_mesh(1, n_nodes))
+            The finite element solution is obtained at the nodes (upper right figure) of the mesh.
+            Here, we assumed that the nodes are sampled from a uniformly random distribution on
+            :math:`[-1,1] \\times [1, 2]`.
 
-        For the sake of this example, we also assume that the nodal values are "exact", i.e. they
-        are the function values at the nodes. In reality, of course, this will not be the case,
-        but this allows us to investigate the effect moving from the FE mesh to the DIC grid.
+            >>> n_nodes = 100  # modify this to see how good the interpolated solution is
+            >>> mesh = TriMesh(*TriMesh.sample_mesh(1, n_nodes))
 
-        >>> grid.set_transformation((-1, 2), 50)
-        >>> fe_values = exact_solution(mesh.vertices[:, 0], mesh.vertices[:, 1])
-        >>> interpolated = grid.project_onto_mesh(mesh.vertices, 'nearest')
+            For the sake of this example, we also assume that the nodal values are "exact", i.e. they
+            are the function values at the nodes. In reality, of course, this will not be the case,
+            but this allows us to investigate the effect moving from the FE mesh to the DIC grid.
 
-        The FE solution available at the nodes are interpolated at the DIC grid points, as shown
-        in the lower right figure. Interpolation with continuous functions cannot resolve well the
-        discontinuity present in the "exact solution", i.e. in the measurement data. A discontinuous
-        manufactured solution was intentionally prepared to illustrate this.
+            >>> grid.set_transformation((-1, 2), 50)
+            >>> fe_values = exact_solution(mesh.vertices[:, 0], mesh.vertices[:, 1])
+            >>> interpolated = grid.project_onto_mesh(mesh.vertices, 'nearest')
 
-        >>> ax = []
-        >>> ax.append(plt.subplot(221))
-        >>> grid.plot_physicalgrid(ax[0])
-        >>> plt.title('DIC grid')
-        >>> ax.append(plt.subplot(222))
-        >>> mesh.plot('k.', ax=ax[1], markersize=1)
-        >>> plt.title('FE nodes')
-        >>> ax.append(plt.subplot(223))
-        >>> plt.imshow(exact_solution(x_grid, y_grid).T, extent=(-1, 1, 1, 2), origin='lower',
-        ...            vmin=-4, vmax = 5)
-        >>> plt.title('Exact solution on the DIC grid')
-        >>> ax.append(plt.subplot(224))
-        >>> interpolated[0][np.isnan(interpolated[0])] = 0
-        >>> mesh.associate_field(interpolated[0])
-        >>> mesh.plot_field(0, show_mesh=False, ax=ax[3])
-        >>> plt.title('FE solution interpolated at the DIC grid')
-        >>> plt.show()
+            The FE solution available at the nodes are interpolated at the DIC grid points, as shown
+            in the lower right figure. Interpolation with continuous functions cannot resolve well the
+            discontinuity present in the "exact solution", i.e. in the measurement data. A discontinuous
+            manufactured solution was intentionally prepared to illustrate this.
+
+            >>> ax = []
+            >>> ax.append(plt.subplot(221))
+            >>> grid.plot_physicalgrid(ax[0])
+            >>> plt.title('DIC grid')
+            >>> ax.append(plt.subplot(222))
+            >>> mesh.plot('k.', ax=ax[1], markersize=1)
+            >>> plt.title('FE nodes')
+            >>> ax.append(plt.subplot(223))
+            >>> plt.imshow(exact_solution(x_grid, y_grid).T, extent=(-1, 1, 1, 2), origin='lower',
+            ...            vmin=-4, vmax = 5)
+            >>> plt.title('Exact solution on the DIC grid')
+            >>> ax.append(plt.subplot(224))
+            >>> interpolated[0][np.isnan(interpolated[0])] = 0
+            >>> mesh.associate_field(interpolated[0])
+            >>> mesh.plot_field(0, show_mesh=False, ax=ax[3])
+            >>> plt.title('FE solution interpolated at the DIC grid')
+            >>> plt.show()
 
         You are invited to modify this example to simulate a finer mesh by increasing
         :code:`n_nodes`. Also try different interpolation techniques.
@@ -262,9 +266,6 @@ class DIC:
 
     def project_onto_grid(self, nodes, nodal_values, method='linear'):
         """Project a numerically computed field onto the DIC grid.
-
-        .. todo::
-            Is there a way to execute the docstring in Sphinx and embed the image?
 
         .. todo::
             Use the example code of this method to create the plotting method of this class.
@@ -292,56 +293,56 @@ class DIC:
 
         Examples
         --------
-        Suppose we have measured field data, obtained by DIC. The experimental field values are
-        obtained as an image. The pixel centers of this image form a grid, each grid point having
-        an associated scalar value, the value of the measured field. In this example, we pretend
-        that the measured field is given as a function. The DIC grid and the measured field values
-        can be seen in the upper left and lower left figures, respectively.
+        The DIC grid and the nodal finite element values (interpolated in-between, which is an
+        errenous way to visualize discontinuous functions) can be seen in the upper left and lower
+        left figures, respectively.
 
-        >>> x_grid, y_grid = np.mgrid[-1:1:100j, 1:2:50j]
-        >>> exact_solution = lambda x, y: 1 - (x + y**2) * np.sign(x)
-        >>> grid = DIC(exact_solution(x_grid, y_grid).T, exact_solution(x_grid,y_grid).T)
-        >>> grid.set_transformation((-1, 2), 50)
+        .. plot::
 
-        The finite element solution is obtained at the nodes (upper right figure) of the mesh.
-        Here, we assumed that the nodes are sampled from a uniformly random distribution on
-        :math:`[-1,1] \\times [-1, 1]`.
+            >>> from grains.dic import DIC
+            >>> from grains.geometry import TriMesh
+            >>> x_grid, y_grid = np.mgrid[-1:1:100j, 1:2:50j]
+            >>> exact_solution = lambda x, y: 1 - (x + y**2) * np.sign(x)
+            >>> grid = DIC(exact_solution(x_grid, y_grid).T, exact_solution(x_grid,y_grid).T)
+            >>> grid.set_transformation((-1, 2), 50)
 
-        >>> n_nodes = 100  # modify this to see how good the interpolated solution is
-        >>> fe_nodes_x = 2*np.random.rand(n_nodes) - 1
-        >>> fe_nodes_y = np.random.rand(n_nodes) + 1
-        >>> fe_nodes = np.stack((fe_nodes_x, fe_nodes_y), axis=1)
+            The finite element solution is obtained at the nodes (upper right figure) of the mesh.
+            Here, we assumed that the nodes are sampled from a uniformly random distribution on
+            :math:`[-1,1] \\times [1, 2]`.
 
-        For the sake of this example, we also assume that the nodal values are "exact", i.e. they
-        are the function values at the nodes. In reality, of course, this will not be the case,
-        but this allows us to investigate the effect moving from the FE mesh to the DIC grid.
+            >>> n_nodes = 100  # modify this to see how good the interpolated solution is
 
-        >>> fe_values = exact_solution(fe_nodes_x, fe_nodes_y)
-        >>> interpolated = grid.project_onto_grid(fe_nodes, fe_values)
+            For the sake of this example, we also assume that the nodal values are "exact", i.e.
+            they admit the function values at the nodes. In reality, of course, this will
+            not be the case, but this allows us to investigate the effect moving from the FE mesh
+            to the DIC grid.
 
-        The FE solution available at the nodes are interpolated at the DIC grid points, as shown
-        in the lower right figure. Interpolation with continuous functions cannot resolve well the
-        discontinuity present in the "exact solution", i.e. in the measurement data. A discontinuous
-        manufactured solution was intentionally prepared to illustrate this.
+            >>> mesh = TriMesh(*TriMesh.sample_mesh(1, n_nodes))
+            >>> fe_values = exact_solution(mesh.vertices[:, 0], mesh.vertices[:, 1])
+            >>> mesh.associate_field(fe_values)
+            >>> interpolated = grid.project_onto_grid(mesh.vertices, fe_values, method='linear')
 
-        >>> ax = []
-        >>> ax.append(plt.subplot(221))
-        >>> plt.plot(x_grid, y_grid, 'k.', ms=1)
-        >>> plt.title('DIC grid')
-        >>> ax.append(plt.subplot(222))
-        >>> plt.plot(fe_nodes_x, fe_nodes_y, 'k.', ms=1)
-        >>> plt.title('FE nodes')
-        >>> ax.append(plt.subplot(223))
-        >>> plt.imshow(exact_solution(x_grid, y_grid).T, extent=(-1, 1, 1, 2), origin='lower',
-        ...            vmin=-4, vmax = 5)
-        >>> plt.title('Exact solution on the DIC grid')
-        >>> ax.append(plt.subplot(224))
-        >>> plt.imshow(interpolated, extent=(-1, 1, 1, 2), origin='lower', vmin=-4, vmax = 5)
-        >>> plt.title('FE solution interpolated at the DIC grid')
-        >>> plt.tight_layout()
-        >>> for a in ax:
-        ...     a.set_aspect('equal', 'box')
-        >>> plt.show()
+            The FE field available at the nodes are interpolated at the DIC grid points, as shown
+            in the lower right figure. Note that no extrapolation is performed, so values are not
+            computed at the grid points lying outside the convex hull of the finite element nodes.
+
+            >>> ax = []
+            >>> ax.append(plt.subplot(221))
+            >>> plt.plot(x_grid, y_grid, 'k.', ms=1)
+            >>> plt.title('DIC grid')
+            >>> ax.append(plt.subplot(222))
+            >>> plt.plot(mesh.vertices[:, 0], mesh.vertices[:, 1], 'k.', ms=1)
+            >>> plt.title('FE nodes')
+            >>> ax.append(plt.subplot(223))
+            >>> mesh.plot_field(0, ax=ax[-1])
+            >>> plt.title('FE field')
+            >>> ax.append(plt.subplot(224))
+            >>> plt.imshow(interpolated, extent=(-1, 1, 1, 2), origin='lower', vmin=-4, vmax = 5)
+            >>> plt.title('FE field interpolated at the DIC grid')
+            >>> plt.tight_layout()
+            >>> for a in ax:
+            ...     a.set_aspect('equal', 'box')
+            >>> plt.show()
 
         You are invited to modify this example to simulate a finer mesh by increasing
         :code:`n_nodes`. Also try different interpolation techniques.
@@ -455,7 +456,7 @@ class DIC:
         Parameters
         ----------
         mesh : Mesh
-            A subclass of :class:`grains.geometry_new.Mesh` to be plotted along with the physical
+            A subclass of :class:`grains.geometry.Mesh` to be plotted along with the physical
             DIC grid.
         args : optional
             The same as for :meth:`matplotlib.axes.Axes.plot`. The settings given here influence
@@ -471,21 +472,25 @@ class DIC:
 
         See Also
         --------
-        :meth:`grains.geometry_new.TriMesh.plot`
+        :meth:`grains.geometry.TriMesh.plot`
 
         Examples
         --------
         Let us create a grid and a random mesh (the same as in the `Examples` section of the
         :meth:`project_onto_mesh`).
 
-        >>> x_grid, y_grid = np.mgrid[-1:1:100j, 1:2:50j]
-        >>> exact_solution = lambda x, y: 1 - (x + y**2) * np.sign(x)
-        >>> grid = DIC(np.random.rand(*np.shape(x_grid.T)), np.random.rand(*np.shape(x_grid.T)))
-        >>> grid.set_transformation((-1, 2), 50)
-        >>> n_nodes = 100  # modify this to see how good the interpolated solution is
-        >>> msh = TriMesh(*TriMesh.sample_mesh(1, n_nodes))
-        >>> grid.plot_superimposedmesh(msh, linewidth=3, markerfacecolor='b')
-        >>> plt.show()
+        .. plot::
+
+            >>> from grains.dic import DIC
+            >>> from grains.geometry import TriMesh
+            >>> x_grid, y_grid = np.mgrid[-1:1:100j, 1:2:50j]
+            >>> exact_solution = lambda x, y: 1 - (x + y**2) * np.sign(x)
+            >>> grid = DIC(np.random.rand(*np.shape(x_grid.T)), np.random.rand(*np.shape(x_grid.T)))
+            >>> grid.set_transformation((-1, 2), 50)
+            >>> n_nodes = 100  # modify this to see how good the interpolated solution is
+            >>> msh = TriMesh(*TriMesh.sample_mesh(1, n_nodes))
+            >>> grid.plot_superimposedmesh(msh, linewidth=3, markerfacecolor='b')
+            >>> plt.show()
 
         """
         ax = plt.figure().add_subplot()

@@ -7,7 +7,6 @@ Segmentation
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:
 
 
 .. currentmodule:: grains.gala_light
@@ -19,7 +18,6 @@ Gala
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:
 
 
 .. currentmodule:: grains.analysis
@@ -31,7 +29,6 @@ Analysis
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:
 
 
 .. currentmodule:: grains.meshing
@@ -43,7 +40,6 @@ Meshing
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:
 
 
 .. currentmodule:: grains.cad
@@ -55,7 +51,6 @@ CAD
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:
 
 
 .. currentmodule:: grains.med
@@ -67,7 +62,6 @@ MED
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:
 
 
 .. currentmodule:: grains.geometry
@@ -79,7 +73,6 @@ Geometry
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:
 
 
 .. currentmodule:: grains.abaqus
@@ -91,7 +84,6 @@ Abaqus
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:
 
 
 .. currentmodule:: grains.dic
@@ -103,7 +95,6 @@ DIC
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:
 
 
 .. currentmodule:: grains.simulation
@@ -115,7 +106,6 @@ Simulation
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:
 
 
 .. currentmodule:: grains.utils
@@ -127,7 +117,6 @@ Utilities
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:
 
 
 .. currentmodule:: grains.profiling
@@ -139,7 +128,6 @@ Profiling
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:
 
 
 Index

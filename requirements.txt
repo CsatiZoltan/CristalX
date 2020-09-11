@@ -1,4 +1,4 @@
-scikit-image
+scikit-image>=0.13.0
 matplotlib
 skan~=0.8
 scipy~=1.4.1

@@ -13,6 +13,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
+from grains import HAS_PYINSTRUMENT, HAS_MED, HAS_OCCT
 
 
 # -- Project information -----------------------------------------------------
@@ -76,7 +77,13 @@ apidoc_excluded_paths = ['../scripts/']
 apidoc_separate_modules = True
 
 # autodoc settings
-autodoc_mock_imports = ['MEDLoader', 'pyinstrument']
+autodoc_mock_imports = []
+if not HAS_PYINSTRUMENT:
+    autodoc_mock_imports.append('pyinstrument')
+if not HAS_MED:
+    autodoc_mock_imports.append('MEDLoader')
+if not HAS_OCCT:
+    autodoc_mock_imports.append('OCC')
 
 # intersphinx settings
 intersphinx_mapping = {'python': ('http://docs.python.org/3', None),

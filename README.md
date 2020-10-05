@@ -1,4 +1,4 @@
-# Polycrystalline microstructures
+# CristalX
 
 [![BCH  compliance](https://bettercodehub.com/edge/badge/CsatiZoltan/Polycrystalline-microstructures?branch=master)](https://bettercodehub.com/) [![Documentation Status](https://readthedocs.org/projects/polycrystalline-microstructures/badge/?version=latest)](https://polycrystalline-microstructures.readthedocs.io/en/latest/?badge=latest)
 

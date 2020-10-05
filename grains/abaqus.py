@@ -2,7 +2,7 @@
 """
 .. warning::
     This module will substantially be rewritten. See `this issue
-    <https://github.com/CsatiZoltan/Polycrystalline-microstructures/issues/28>`_.
+    <https://github.com/CsatiZoltan/CristalX/issues/28>`_.
 
 This module allows to create and manipulate Abaqus input files through the `Abaqus keywords
 <https://abaqus-docs.mit.edu/2017/English/SIMACAECAERefMap/simacae-c-gen-kwbrowser.htm>`_, thereby
@@ -19,7 +19,7 @@ The documentation of Abaqus version 2017 is hosted on the following website:
 https://abaqus-docs.mit.edu/2017/English/SIMACAEEXCRefMap/simaexc-c-docproc.htm.
 Throughout the documentation of this module (:mod:`grains.abaqus`), we will make references to
 that website. If the links cease to exist, please let me know by
-`opening an issue <https://github.com/CsatiZoltan/Polycrystalline-microstructures/issues/new>`_.
+`opening an issue <https://github.com/CsatiZoltan/CristalX/issues/new>`_.
 Alternatively, once you have registered, you can browse the documentation on the
 `official website <https://www.3ds.com/support/documentation/users-guides/>`_.
 

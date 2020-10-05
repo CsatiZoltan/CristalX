@@ -18,7 +18,7 @@ from grains import HAS_PYINSTRUMENT, HAS_MED, HAS_OCCT
 
 # -- Project information -----------------------------------------------------
 
-project = 'Polycrystalline microstructures'
+project = 'CristalX'
 copyright = '2020, Zoltan Csati'
 author = 'Zoltan Csati'
 

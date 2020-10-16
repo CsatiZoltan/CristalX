@@ -1,0 +1,25 @@
+name: CristalX
+channels:
+  - dlr-sc
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.6
+  - pythonocc-core=0.17.3
+  - skan
+  - pytables
+  - pandas
+  - scipy
+  - sphinx==2.4.4
+  - sphinx_rtd_theme
+  - sphinxcontrib-apidoc
+  - sphinx-autoapi
+  - sphinx-tabs
+  - sphinx-copybutton
+  - recommonmark
+  - pyinstrument
+  - pip:
+    - sphinx-git
+    - sphinx-toggleprompt
+    - sphinx-hoverxref
+    - git+http://github.com/bluenote10/PandasDataFrameGUI@master#egg=dfgui

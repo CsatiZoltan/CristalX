@@ -48,7 +48,9 @@ extensions = [
     'sphinx_toggleprompt',
     'hoverxref.extension',
     'sphinx_tabs.tabs',
-    'matplotlib.sphinxext.plot_directive'
+    'matplotlib.sphinxext.plot_directive',
+    'nbsphinx',
+    'nbsphinx_link'
 ]
 
 # Add any paths that contain templates here, relative to this directory.

@@ -18,8 +18,13 @@ dependencies:
   - sphinx-copybutton
   - recommonmark
   - pyinstrument
+  - pandoc
+  - ipykernel
+  - pip       
   - pip:
     - sphinx-git
     - sphinx-toggleprompt
     - sphinx-hoverxref
+    - nbsphinx
+    - nbsphinx_link
     - git+http://github.com/bluenote10/PandasDataFrameGUI@master#egg=dfgui

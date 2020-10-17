@@ -8,5 +8,5 @@ Then it mainly contains links to the individual phases, such as segmentation, ge
 .. toctree::
    :maxdepth: 2
 
-   image_to_geometry
+   example_application
 

@@ -4,38 +4,38 @@ Welcome to the documentation!
 Global intro
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Getting started
 
    introduction
    installation
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: User guide
 
    user_guide
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Additional resources
 
    extras
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Developer guide
 
    dev_guide
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: API
 
    api
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Meta
 
    Changelog <changelog>

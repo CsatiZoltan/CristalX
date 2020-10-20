@@ -31,6 +31,7 @@ Global intro
 .. toctree::
    :maxdepth: 1
    :caption: API
+   :name: api_doc
 
    api
 

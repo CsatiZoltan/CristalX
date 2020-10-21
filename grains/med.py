@@ -34,11 +34,10 @@ import warnings
 
 import numpy as np
 
-from grains import HAS_MED
-if HAS_MED:
+try:
     from MEDLoader import MEDFileData
     # from MEDCoupling import MEDCouplingUMesh, MEDCouplingMesh, MEDCouplingUMeshCellIterator
-else:
+except:
     raise ImportError('This module requires the MEDCoupling module from Salome.')
 
 

@@ -15,11 +15,10 @@ import codecs
 import inspect
 from contextlib import contextmanager
 
-from grains import HAS_PYINSTRUMENT
-if HAS_PYINSTRUMENT:
+try:
     from pyinstrument import Profiler
     from pyinstrument.renderers.html import HTMLRenderer
-else:
+except:
     raise ImportError('This module requires the pyinstrument module.')
 
 

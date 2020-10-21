@@ -53,9 +53,7 @@ from skimage.color import label2rgb
 from skan import Skeleton, summarize
 from skan.draw import overlay_skeleton_networkx
 
-from grains import HAS_OCCT
-
-if HAS_OCCT:
+try:
     from OCC.gp import gp_Pnt
     from OCC.TColgp import TColgp_Array1OfPnt
     from OCC.GeomAPI import GeomAPI_PointsToBSpline
@@ -68,7 +66,7 @@ if HAS_OCCT:
     from OCC.IFSelect import IFSelect_RetDone
     from OCC.Display.SimpleGui import init_display
     from OCC.Display.OCCViewer import rgb_color
-else:
+except:
     warnings.warn('PythonOCC is not available. Some functions cannot be used.', ImportWarning)
 
 from .utils import toggle, index_list, non_unique

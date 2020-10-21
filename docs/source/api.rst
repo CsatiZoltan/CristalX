@@ -121,6 +121,8 @@ Utilities
 
 .. currentmodule:: grains.profiling
 
+.. _profiling:
+
 Profiling
 =========
 

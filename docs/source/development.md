@@ -1,6 +1,22 @@
 # Development
 
-Intro
+Intro ...
+
+
+
+## General workflow
+
+The development workflow can be followed in the following figure.
+
+
+
+![Alt text](images/development_workflow.svg)
+
+1. You write the Python source codes (.py) and the Jupyter notebooks (.ipynb) on your local machine. The documentation that is . If you want, you can [create the documentation](documentation) locally using Sphinx.
+2. When a logical unit has been finished, you commit the changes with `git push`. This will upload the new version of the modified files to a remote repository (currently GitHub). If you edit files in the remote repository and you want those changes to be present in your local copy, you can use `git pull`. For more details on Git, read the [manual](https://git-scm.com/docs/git-pull).
+3. Several commit hooks are attached to the remote repository. When they detect a change, certain actions are activated. One the one hand, the online version of the documentation, hosted on [Read the Docs](https://cristalx.readthedocs.io/) will be updated. On the other hand, static analyzers will reanalyze the new version of the code. Some of them may create a pull request based on their recommendations.
+
+
 
 ## Profiling
 

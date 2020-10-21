@@ -1,6 +1,7 @@
 .. toctree::
    :maxdepth: 1
 
+   salome
    med
    algorithms
    femu

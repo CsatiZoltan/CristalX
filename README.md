@@ -6,7 +6,23 @@ Identification of individual grains in microscopic images
 
 
 
+*CristalX* is a Python package that helps in the analysis of polycrystalline microstructures. Its name originates from the French word 'cristal', corresponding to the English word 'crystal'.
+
+
+
 This project is under heavy development. As the modules are under refactoring, this work is not yet suitable for the public. Stay tuned...
+
+
+
+## Features
+
+-  Image segmentation to identify the grains in a microstructure
+-  Analysis tools for the segmented image
+-  Explicit geometrical representation of the grains
+-  Interacting with meshes created on the microstructure
+-  Mapping fields between a mesh and the grid of DIC measurements
+-  Simulation tools for the inverse problem arising from a combined numerical-experimental method (in progress ...)
+-  Visualization and data exchange
 
 
 

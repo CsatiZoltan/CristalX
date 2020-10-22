@@ -130,3 +130,6 @@ dmypy.json
 
 # A temporary directory in which I collect some half-ready code
 /temp/
+
+# The README file is automatically copied during the generation of the documentation
+/docs/source/README.md

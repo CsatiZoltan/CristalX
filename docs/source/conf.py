@@ -15,6 +15,10 @@ import sys
 sys.path.insert(0, os.path.abspath('../..'))
 from grains import HAS_PYINSTRUMENT, HAS_MED, HAS_OCCT
 
+# Recommonmark can only include Markdown files from the same directory
+from shutil import copy
+copy('../../README.md', '.')
+
 
 # -- Project information -----------------------------------------------------
 

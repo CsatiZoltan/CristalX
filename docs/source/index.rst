@@ -9,6 +9,7 @@ Global intro
 
    introduction
    installation
+   user_documentation
 
 .. toctree::
    :maxdepth: 1

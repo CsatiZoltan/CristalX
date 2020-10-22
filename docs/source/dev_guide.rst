@@ -3,5 +3,5 @@
 
    design
    coding_conventions
-   documentation
+   dev_documentation
    development

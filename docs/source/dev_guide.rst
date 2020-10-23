@@ -5,3 +5,4 @@
    coding_conventions
    dev_documentation
    development
+   contributing

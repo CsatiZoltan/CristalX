@@ -31,3 +31,9 @@ This project is under heavy development. As the modules are under refactoring, t
 1. Read the [documentation](https://cristalx.readthedocs.io/).
 2. Check the [existing issues](https://github.com/CsatiZoltan/CristalX/issues). They may already provide an answer to you question.
 3. Open a [new issue](https://github.com/CsatiZoltan/CristalX/issues/new).
+
+
+
+## Contributing
+
+Read the `docs/source/contributing.md` file.

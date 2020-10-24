@@ -55,6 +55,8 @@ CAD
 
 .. currentmodule:: grains.med
 
+.. _med_module:
+
 MED
 ===
 

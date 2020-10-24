@@ -9,7 +9,7 @@ After exporting the mesh from Salome to a MED file, we may want to perform certa
 
 Moreover, it can happen that some mesh processing functionalities they may want to use does not exist. Since meshes consisting of cells of the same type (e.g. triangles) can be represented as homogeneous and contiguous arrays, converting the mesh from MED to numpy arrays seems a reasonable choice. This is what our *med* module does: it provides a thin wrapper around *MEDCoupling* to extract the mesh and the defined groups (cell and vertex groups) from the MED file and convert them to numpy arrays. This way, the user who deals with numerical modelling can implement their mesh processing algorithms based on numpy arrays, which is fast and straightforward. Furthermore, the person who performs the CAD operations and has Salome installed, can use our *med* module to export the mesh to numpy arrays so that the numerical analyst can directly work on it without having to have Salome installed and without any knowledge on the *MEDCoupling* API.
 
-If you want to know more about the implementation details, read the documentation for the [med module](https://github.com/CsatiZoltan/CristalX/blob/master/grains/med.py).
+If you want to know more about the implementation details, read the documentation for the [med module](med_module).
 
 
 

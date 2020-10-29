@@ -24,11 +24,13 @@ Functions
     compress
     decompress
     decompress_inmemory
+    neighborhood
 
 """
 
 import os
 import zipfile
+from functools import reduce
 
 import numpy as np
 
@@ -431,6 +433,140 @@ def decompress_inmemory(filename):
                 name = os.path.splitext(thisfile.name)[0]
                 data[name] = compressed.read(thisfile.name).decode()
     return data
+
+
+def neighborhood(center, radius, norm, method='ball', bounds=None):
+    r"""Neighboring points to a grid point.
+
+    Given a point in a subspace of :math:`\mathbb{Z}^n`, the neighboring points are determined
+    based on the specified rules.
+
+    .. todo::
+        Currently, the neighbors are deterministically but not systematically ordered.
+        Apart from testing purposes, this does not seem to be a big issue.
+        Still, a logical ordering is desirable. E.g. ordering in increasing coordinate values,
+        first in the first dimension and lastly in the last dimension.
+
+    Parameters
+    ----------
+    center : tuple of int
+        Point :math:`x_0` around which the neighborhood is searched. It must be an n-tuple of
+        integers, where :math:`n` is the spatial dimension.
+    radius : int, positive
+        Radius of the ball or sphere in which the neighbors are searched.
+        If the radius is 1, the immediate neighbors are returned.
+    norm : {1, inf}
+        Type of the vector norm :math:`\| x - x_0 \|`, where :math:`x` is a point whose
+        distance is searched from the center :math:`x_0`.
+
+        =========   ============   =========================================================
+        Type        Name           Definition
+        =========   ============   =========================================================
+        1           1-norm         :math:`\| x \|_1 = \sum_{i=1}^n |x_i|`
+        numpy.inf   maximum norm   :math:`\| x \|_{\infty} = \max\{ |x_1|, \ldots, |x_n| \}`
+        =========   ============   =========================================================
+
+        where inf means numpy's np.inf object.
+    method : {'ball', 'sphere'}, optional
+        Specifies the criterion of how to decide whether a point :math:`x` is in the neighborhood
+        of :math:`x_0`. The default is 'ball'.
+
+        For 'ball':
+
+        .. math::
+            \| x - x_0 \| \leq r
+
+        For 'sphere':
+
+        .. math::
+            \| x - x_0 \| = r
+
+        where :math:`r` is the radius passed as the :code:`radius` parameter and the type of the
+        norm is taken based on the :code:`norm` input parameter.
+    bounds : list of tuple, optional
+        Restricts the neighbors within a box. The dimensions of the n-dimensional box are given
+        as a list of 2-tuples: [(x_1_min, x_1_max), ... , (x_n_min, x_n_max)]. The default value
+        is an unbounded box in all dimensions. Use np.inf to indicate unbounded values.
+
+    Returns
+    -------
+    neighbors : list of ndarray
+        List of length n, each entry being a 1D numpy array: the integer indices of the points
+        that are in the neighborhood of :code:`center`.
+
+
+    Notes
+    -----
+    1. The `von Neumann neighborhood <https://mathworld.wolfram.com/vonNeumannNeighborhood.html>`_
+    with range :math:`r` is a special case when :code:`radius=r`, :code:`norm=1` and
+    :code:`method='ball'`.
+
+    2. The `Moore neighborhood <https://mathworld.wolfram.com/MooreNeighborhood.html>`_
+    with range :math:`r` is a special case when :code:`radius=r`, :code:`norm=np.inf` and
+    :code:`method='ball'`.
+
+    Examples
+    --------
+    Find the Moore neighborhood with range 2 the point (1) on the half-line [0, inf).
+
+    >>> neighborhood((1,), 2, np.inf, bounds=[(0, np.inf)])
+    [array([0, 1, 2, 3])]
+
+    Find the von Neumann neighborhood with range 2 around the point (2, 2), restricted on
+    the domain [0, 4] x [0, 3].
+
+    >>> neighborhood((2, 2), 2, 1, bounds=[(0, 4), (0, 3)])
+    [array([2, 1, 2, 3, 0, 1, 2, 3, 4, 1, 2, 3]), array([0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3])]
+
+    Find the Moore neighborhood with range 1 around the point (0, -4) such that the neighbors
+    lie on the half-plane [0, 2] x (-inf, -4].
+
+    >>> neighborhood((0, -4), 1, np.inf, bounds=[(0, 2), (-np.inf, -4)])
+    [array([0, 1, 0, 1]), array([-5, -5, -4, -4])]
+
+    Find the sphere of radius 2, measured in the 1-norm, around the point (-1, 0, 3), within the
+    half-space {(x,y,z) in Z^3 | y>=0}.
+
+    >>> neighborhood((-1, 0, 3), 2, 1, 'sphere', [(-np.inf, np.inf), (0, np.inf), (-np.inf, np.inf)])  # doctest: +NORMALIZE_WHITESPACE
+    [array([-3, -2, -2, -1, -1,  0,  0,  1, -2, -1, -1,  0, -1]),
+     array([0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2]),
+     array([3, 2, 4, 1, 5, 2, 4, 3, 3, 2, 4, 3, 3])]
+
+    """
+    dim = len(center)
+    if not bounds:
+        bounds = [(-np.Inf, np.Inf) for i in range(dim)]
+
+    # Every neighborhood is within this bounding box
+    bounding_box = [np.linspace(center[i] - radius, center[i] + radius, 2 * radius + 1, dtype=int)
+                    for i in range(dim)]
+    # Coordinates of the points in that bounding box
+    X = np.meshgrid(*bounding_box)
+    candidates = [X[i].flatten() for i in range(dim)]
+
+    # Distance of the candidate points from the center
+    candidates_matrix = np.column_stack(candidates)
+    center_matrix = np.reshape(center, (1, dim))
+    n_candidates = (2 * radius + 1) ** dim
+    center_matrix = np.repeat(center_matrix, n_candidates, axis=0)
+    distance = lambda x: np.linalg.norm(x, norm, axis=1)
+    distances = distance(candidates_matrix - center_matrix)
+
+    # Select those points that satisfy the required distance measure
+    within_distance = distances <= radius if method == 'ball' else distances == radius
+
+    # Consider only neighbors that fall within the specified bounds
+    within_bounds = []
+    for i in range(dim):
+        lower_bound = bounds[i][0]
+        upper_bound = bounds[i][1]
+        within_bounds.append((candidates_matrix[:, i] >= lower_bound) &
+                             (candidates_matrix[:, i] <= upper_bound))
+    within_bounds = reduce(np.logical_and, within_bounds)
+
+    # Neighbors are given component-wise
+    neighbors = [candidates[i][within_distance & within_bounds] for i in range(dim)]
+    return neighbors
 
 
 if __name__ == "__main__":

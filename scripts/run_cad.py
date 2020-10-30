@@ -7,7 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from grains import HAS_OCCT
-from grains.cad import polygonize, overlay_regions, splinegonize, regions2step, plot_splinegons
+from grains.cad import polygonize, overlay_regions, splinegonize, regions2step, plot_splinegons, \
+    search_neighbor
 from grains.simulation import change_domain
 if HAS_OCCT:
     from OCC.Display.SimpleGui import init_display
@@ -43,8 +44,8 @@ test_image = np.load(image_matrix)
 # plt.show()
 
 # Splinegon representation of the label image
-splinegons, _ = splinegonize(test_image, connectivity=1, look_around=2, degree_min=3,
-                             degree_max=3, continuity='C0', tol=1)
+splinegons, _ = splinegonize(test_image, search_neighbor(2, np.inf), connectivity=1,
+                             degree_min=3, degree_max=3, continuity='C0', tol=1)
 # Plot the splinegonized regions
 plot_splinegons(list(splinegons.values()), color=(0, 0, 1))
 # Write the geometry to a STEP file

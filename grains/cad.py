@@ -36,6 +36,7 @@ Functions
     write_step_file
     plot_polygon
     overlay_regions
+    search_neighbor
 
 
 """
@@ -43,7 +44,7 @@ Functions
 import os
 import warnings
 from collections import Counter
-import numpy.fft
+from functools import partial
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import collections
@@ -69,7 +70,7 @@ try:
 except:
     warnings.warn('PythonOCC is not available. Some functions cannot be used.', ImportWarning)
 
-from .utils import toggle, index_list, non_unique
+from .utils import toggle, index_list, non_unique, neighborhood
 
 
 def build_skeleton(label_image, connectivity=1, detect_boundaries=True):
@@ -121,7 +122,7 @@ def build_skeleton(label_image, connectivity=1, detect_boundaries=True):
     return skeleton_network
 
 
-def skeleton2regions(skeleton_network, look_around=2, algorithm=1):
+def skeleton2regions(skeleton_network, neighbor_search_algorithm):
     """Determines the regions bounded by a skeleton network.
 
     This function can be perceived as an intermediate step between a skeleton network and
@@ -134,11 +135,9 @@ def skeleton2regions(skeleton_network, look_around=2, algorithm=1):
     ----------
     skeleton_network : Skeleton
         Geometrical and topological information about the skeleton network of a label image.
-    look_around : int, optional
-        A junction is considered part of a region if it is at most `look_around` pixel far from it.
-        The default is 2. For further details, see the Notes below.
-    algorithm : int, optional
+    neighbor_search_algorithm : functools.partial
         Specifies which algorithm to use for constructing the branch-region connectivity.
+        The function to be passed (along with its arguments) is :func:`skeleton2regions`.
         For further details, see the Notes below.
 
     Returns
@@ -166,7 +165,7 @@ def skeleton2regions(skeleton_network, look_around=2, algorithm=1):
 
     - It is assumed that only branches that connect two junctions form the boundary of a region.
       This rule ensures that end points are not taken into account. However, this assumption also
-      rules out the identification of region being contained in another region as the embedded
+      rules out the identification of regions being contained in another regions as the embedded
       region would be described by an isolated cycle.
     - The recognition of which branches form a region is based on the premise that a junction
       belongs to a region if its n-pixel neighbourhood contains a pixel from that region.
@@ -177,7 +176,8 @@ def skeleton2regions(skeleton_network, look_around=2, algorithm=1):
       regions, which actually belong there. On the other hand, if `n` is too large, junctions
       that do not belong to the region are also included. Currently, we recommend trying
       different parameters `n`, plot the reconstructed regions over the label image using the
-      `overlay_regions` function, and see how good the result is. As a heuristic, start with `n=2`.
+      :func:`overlay_regions` function, and see how good the result is. As a heuristic, start with
+      `n=2`.
     - There are configurations in which two junctions are part of a region but those two
       junctions are connected by more than one branches (typically two). The question is: which
       branch to choose as a boundary part of the region? The answer is: the one that is entirely
@@ -199,6 +199,7 @@ def skeleton2regions(skeleton_network, look_around=2, algorithm=1):
     junction_coordinates = S.coordinates[junctions, :]
 
     # Find which regions are incident to a junction
+    look_around = neighbor_search_algorithm.keywords['radius']
     junction_regions = {key: None for key in junctions}
     region_junctions = {}
     # TODO: Simplify the for-loop by using e.g. enumerate or
@@ -233,21 +234,14 @@ def skeleton2regions(skeleton_network, look_around=2, algorithm=1):
     branch_coordinates = [S.path_coordinates(i) for i in range(S.n_paths) if mask[i]]
     # New implementation
     branch_regions2 = []
-    msk = np.array([[True, True, True, True, True], [True, False, False, False, True],
-                    [True, False, False, False, True], [True, False, False, False, True],
-                    [True, True, True, True, True]])
     for i, branch in enumerate(branch_coordinates):
         c = Counter()
         for node in range(1, np.size(branch, 0) - 1):
             node_coord = np.round(branch[node, :]).astype(np.uint32)
-            neighbor_idx = np.s_[max(node_coord[0] - look_around, 0):
-                                 min(node_coord[0] + look_around + 1, image_size[0]),
-                           max(node_coord[1] - look_around, 0):
-                           min(node_coord[1] + look_around + 1, image_size[1])]
-            neighbors = S.source_image[neighbor_idx]
-            if np.shape(neighbors) == (5, 5):
-                neighbors = neighbors[msk]
-            c.update(neighbors.flatten())
+            neighbors = neighbor_search_algorithm(node_coord,
+                                                  bounds=[(0, image_size[0]-1), (0, image_size[1]-1)])
+            neighbors = S.source_image[neighbors]
+            c.update(neighbors)
         neighboring_regions = [pair[0] for pair in c.most_common(2)]
         branch_regions2.append(neighboring_regions)
     branch_regions = {key: val for key, val in enumerate(branch_regions2)}
@@ -473,7 +467,7 @@ def region_as_polygon(branches, orientation='ccw', close='False'):
     return polygon
 
 
-def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=2,
+def polygonize(label_image, neighbor_search_algorithm, connectivity=1, detect_boundaries=True,
                orientation='ccw', close=False):
     """Polygon representation of a label image.
 
@@ -481,15 +475,15 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=
     ----------
     label_image : 2D ndarray with signed integer entries
         Label image, representing a segmented image.
+    neighbor_search_algorithm : functools.partial
+        Specifies which algorithm to use for constructing the branch-region connectivity.
+        The function to be passed (along with its arguments) is :func:`skeleton2regions`.
     connectivity : {1,2}, optional
         A connectivity of 1 (default) means pixels sharing an edge will be considered neighbors.
         A connectivity of 2 means pixels sharing a corner will be considered neighbors.
     detect_boundaries : bool, optional
         When True, the image boundaries will be treated as part of the skeleton. This allows
         identifying boundary regions in the `skeleton2regions` function. The default is True.
-    look_around : int, optional
-        A junction is considered part of a region if it is at most `look_around` pixel far from it.
-        The default is 2. For further details, see the Notes below.
     orientation : {'cw', 'ccw'}, optional
         Clockwise ('cw') or counterclockwise ('ccw') orientation of the polygons.
         The default is 'ccw'.
@@ -529,14 +523,14 @@ def polygonize(label_image, connectivity=1, detect_boundaries=True, look_around=
     ...   [2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
     ...   [2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]],
     ...  dtype=np.int8)
-    >>> polygons = polygonize(test_image, connectivity=1)
+    >>> polygons = polygonize(test_image, search_neighbor(2, np.inf), connectivity=1)
 
     """
     polygons = {}
     # Build the skeleton network from the label image
     S = build_skeleton(label_image, connectivity, detect_boundaries)
     # Identify the regions from the skeleton
-    region_branches, branch_coordinates, _, branch_junctions = skeleton2regions(S, look_around)
+    region_branches, branch_coordinates, _, branch_junctions = skeleton2regions(S, neighbor_search_algorithm)
     # Represent each region as a polygon
     for region, branches in region_branches.items():
         if region == -1:  # artificial outer region
@@ -674,7 +668,7 @@ def region_as_splinegon(boundary_splines):
     return splinegon.Face(), boundary.Wire()
 
 
-def splinegonize(label_image, connectivity=1, detect_boundaries=True, look_around=2,
+def splinegonize(label_image, neighbor_search_algorithm, connectivity=1, detect_boundaries=True,
                  degree_min=3, degree_max=8, continuity='C2', tol=1e-4):
     """Polygon representation of a label image.
 
@@ -682,15 +676,15 @@ def splinegonize(label_image, connectivity=1, detect_boundaries=True, look_aroun
     ----------
     label_image : 2D ndarray with signed integer entries
         Label image, representing a segmented image.
+    neighbor_search_algorithm : functools.partial
+        Specifies which algorithm to use for constructing the branch-region connectivity.
+        The function to be passed (along with its arguments) is :func:`skeleton2regions`.
     connectivity : {1,2}, optional
         A connectivity of 1 (default) means pixels sharing an edge will be considered neighbors.
         A connectivity of 2 means pixels sharing a corner will be considered neighbors.
     detect_boundaries : bool, optional
         When True, the image boundaries will be treated as part of the skeleton. This allows
         identifying boundary regions in the `skeleton2regions` function. The default is True.
-    look_around : int, optional
-        A junction is considered part of a region if it is at most `look_around` pixel far from it.
-        The default is 2. For further details, see the Notes below.
 
     Other Parameters
     ----------------
@@ -732,7 +726,7 @@ def splinegonize(label_image, connectivity=1, detect_boundaries=True, look_aroun
     ...   [2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
     ...   [2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]],
     ...  dtype=np.int8)
-    >>> splinegons, _ = splinegonize(test_image, connectivity=1, tol=0.1)
+    >>> splinegons, _ = splinegonize(test_image, search_neighbor(2, np.inf), connectivity=1, tol=0.1)
     >>> plot_splinegons(list(splinegons.values()))
 
     """
@@ -740,7 +734,7 @@ def splinegonize(label_image, connectivity=1, detect_boundaries=True, look_aroun
     # Build the skeleton network from the label image
     S = build_skeleton(label_image, connectivity, detect_boundaries)
     # Identify the regions from the skeleton
-    region_branches, branch_coordinates, branch_regions, branch_junctions = skeleton2regions(S, look_around)
+    region_branches, branch_coordinates, branch_regions, branch_junctions = skeleton2regions(S, neighbor_search_algorithm)
     # Approximate each branch with a B-spline
     splines = branches2splines(branch_coordinates, degree_min, degree_max, continuity, tol)
     # Represent each region as a splinegon
@@ -949,6 +943,29 @@ def overlay_regions(label_image, polygons, axes=None):
     axes.set_axis_off()
     plt.tight_layout()
     return axes
+
+
+def search_neighbor(radius, norm, method='sphere'):
+    """Neighbor search algorithm.
+
+    Parameters
+    ----------
+    radius, norm, method
+        See the :func:`grains.utils.neighborhood` function.
+
+    Returns
+    -------
+    functools.partial
+        A new function with partial application of the given input arguments on the
+        :func:`grains.utils.neighborhood` function. The returned partial function is used
+        internally by :func:`skeleton2regions` when performing neighbor searching.
+
+    See Also
+    --------
+    :func:`grains.utils.neighborhood`, :func:`skeleton2regions`
+
+    """
+    return partial(neighborhood, radius=radius, norm=norm, method=method)
 
 
 def _spline_continuity_enum(continuity):

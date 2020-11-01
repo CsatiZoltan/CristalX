@@ -145,6 +145,9 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+def remove_copied_files(app, exception):
+    os.remove('source/README.md')
+
 def setup(app):
     app.add_config_value('recommonmark_config', {
             'url_resolver': lambda url: github_doc_root + url,
@@ -154,5 +157,5 @@ def setup(app):
             }, True)
     app.add_transform(AutoStructify)
     app.add_stylesheet('css/custom.css')
-
+    app.connect('build-finished', remove_copied_files)
 

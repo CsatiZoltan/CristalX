@@ -137,7 +137,7 @@ def skeleton2regions(skeleton_network, neighbor_search_algorithm):
         Geometrical and topological information about the skeleton network of a label image.
     neighbor_search_algorithm : functools.partial
         Specifies which algorithm to use for constructing the branch-region connectivity.
-        The function to be passed (along with its arguments) is :func:`skeleton2regions`.
+        The function to be passed (along with its arguments) is :func:`search_neighbor`.
         For further details, see the Notes below.
 
     Returns
@@ -147,13 +147,14 @@ def skeleton2regions(skeleton_network, neighbor_search_algorithm):
     branch_coordinates : list
         Coordinates of the points on each branch.
     branch_regions : dict
-        For each region it contains the neighboring regions.
-        This auxiliary data is not essential as it can be restored from `region_branches`.
-        However, it is computed as temporary data needed for `region_branches`.
+        For each branch it contains the neighboring regions.
+        This auxiliary data is not essential as it can be restored from :code:`region_branches`.
+        However, it is computed as temporary data needed for :code:`region_branches`.
 
     See Also
     --------
     build_skeleton
+    search_neighbor
     overlay_regions
 
     Notes
@@ -167,84 +168,42 @@ def skeleton2regions(skeleton_network, neighbor_search_algorithm):
       This rule ensures that end points are not taken into account. However, this assumption also
       rules out the identification of regions being contained in another regions as the embedded
       region would be described by an isolated cycle.
-    - The recognition of which branches form a region is based on the premise that a junction
-      belongs to a region if its n-pixel neighbourhood contains a pixel from that region.
-      Ideally, n=1 would be used, meaning that the single-pixel width skeleton is located at most
-      1 pixel afar from the regions it lies among. This is true but the junctions of the skeleton
+    - The recognition of which branches form a region is based on the premise that a node of a
+      branch belongs to a region if its `n`-pixel neighbourhood contains a pixel from that region.
+      Ideally, `n=1` would be used, meaning that the single-pixel width skeleton is located at most
+      1 pixel afar from the regions it lies among. This is true but the nodes of the skeleton
       can be farther than 1 pixel from a region. Hence, `n` has to be a parameter of our model.
-      Increasing `n` helps in including junctions (and hence the connecting branches to it) to
-      regions, which actually belong there. On the other hand, if `n` is too large, junctions
-      that do not belong to the region are also included. Currently, we recommend trying
-      different parameters `n`, plot the reconstructed regions over the label image using the
-      :func:`overlay_regions` function, and see how good the result is. As a heuristic, start with
-      `n=2`.
-    - There are configurations in which two junctions are part of a region but those two
-      junctions are connected by more than one branches (typically two). The question is: which
-      branch to choose as a boundary part of the region? The answer is: the one that is entirely
-      inside the region. Testing it is probably not easy or is costly, therefore, we rely on a
-      heuristic argument: the branch with the shortest length is chosen.
+      Increasing `n` helps in identifying the connecting regions to a node of a branch.
+      On the other hand, if `n` is too large, regions that "in reality" are not neighbors of a
+      branch will be included. Currently, we recommend trying different parameters `n`, plot the
+      reconstructed regions over the label image using the :func:`overlay_regions` function,
+      and see how good the result is. As a heuristic, start with `n=2`.
 
     """
     if not isinstance(skeleton_network, Skeleton):
         raise Exception('Skeleton object is expected.')
-    # Extract branch-junction connectivities and the coordinates of the junctions
     S = skeleton_network
     skeleton_data = summarize(S)
     mask = skeleton_data['branch-type'] == 2  # only junction-to-junction connections create regions
-    endpoints_src = skeleton_data['node-id-src'][mask].to_numpy()
-    endpoints_dst = skeleton_data['node-id-dst'][mask].to_numpy()
     image_size = np.shape(S.source_image)
-    branch_junctions = np.transpose(np.vstack((endpoints_src, endpoints_dst)))
-    junctions = np.unique([endpoints_src, endpoints_dst])
-    junction_coordinates = S.coordinates[junctions, :]
+    image_index_grid = [(0, image_size[0] - 1), (0, image_size[1] - 1)]
 
-    # Find which regions are incident to a junction
-    look_around = neighbor_search_algorithm.keywords['radius']
-    junction_regions = {key: None for key in junctions}
-    region_junctions = {}
-    # TODO: Simplify the for-loop by using e.g. enumerate or
-    #  https://discuss.codecademy.com/t/loop-two-variables-simultaneously-in-python-3/261808/2
-    for i in range(len(junctions)):
-        # Snap junction to the nearest image coordinate
-        junction_coord = np.round(junction_coordinates[i, :]).astype(np.uint32)
-        # Look-around for the neighboring pixels (be careful on the image boundaries)
-        neighbor_idx = np.s_[
-                       max(junction_coord[0] - look_around, 0):
-                       min(junction_coord[0] + look_around+1, image_size[0]),
-                       max(junction_coord[1] - look_around, 0):
-                       min(junction_coord[1] + look_around+1, image_size[1])]
-        neighbors = S.source_image[neighbor_idx]
-        neighboring_regions = np.unique(neighbors)
-        # Save junction-region and the region-junction connectivities
-        # TODO: perhaps no need for the region-junction connectivities
-        junction_regions[junctions[i]] = neighboring_regions
-        for region in neighboring_regions:
-            if region not in region_junctions:
-                region_junctions[region] = [junctions[i]]
-            else:
-                region_junctions[region].append(junctions[i])
-
-    # Determine which regions neighbor a branch
-    branch_regions = {}
-    for i, branch in enumerate(branch_junctions):
-        neighboring_regions = np.intersect1d(junction_regions[branch[0]],
-                                             junction_regions[branch[1]])
-        branch_regions[i] = neighboring_regions
-
+    # Find which two regions are incident to a branch
     branch_coordinates = [S.path_coordinates(i) for i in range(S.n_paths) if mask[i]]
-    # New implementation
-    branch_regions2 = []
-    for i, branch in enumerate(branch_coordinates):
+    branch_regions = []
+    for nodes in branch_coordinates:
         c = Counter()
-        for node in range(1, np.size(branch, 0) - 1):
-            node_coord = np.round(branch[node, :]).astype(np.uint32)
-            neighbors = neighbor_search_algorithm(node_coord,
-                                                  bounds=[(0, image_size[0]-1), (0, image_size[1]-1)])
+        internal_nodes = range(1, np.size(nodes, 0) - 1)
+        for node in internal_nodes:
+            # Snap node to the nearest image coordinate
+            node_coord = np.round(nodes[node, :]).astype(np.uint32)
+            # Look-around for the neighboring pixels (be careful on the image boundaries)
+            neighbors = neighbor_search_algorithm(node_coord, bounds=image_index_grid)
             neighbors = S.source_image[neighbors]
             c.update(neighbors)
         neighboring_regions = [pair[0] for pair in c.most_common(2)]
-        branch_regions2.append(neighboring_regions)
-    branch_regions = {key: val for key, val in enumerate(branch_regions2)}
+        branch_regions.append(neighboring_regions)
+    branch_regions = {key: val for key, val in enumerate(branch_regions)}
 
     # For each region, find the branches that bound it
     region_branches = {}
@@ -255,33 +214,7 @@ def skeleton2regions(skeleton_network, neighbor_search_algorithm):
             else:
                 region_branches[region].append(branch)
 
-    # More than one branch can connect two junctions. In that case, leave only one.
-    # branch_lengths = S.path_lengths()
-    # for i in region_branches.keys():
-    #     branches = region_branches[i]
-    #     junctions = region_junctions[i]
-    #     if len(branches) > len(junctions):
-    #         # Branches that connect the same two junctions (i.e. multiple edges in the graph)
-    #         # branch_junctions[region_branches[i]]
-    #         _, id = non_unique(branch_junctions[branches], 0)
-    #         # Only the shortest branch bounds this region
-    #         edges_to_remove = []
-    #         for multiple_edges in id:
-    #             global_multiple_edges = index_list(branches, multiple_edges)
-    #             lengths = branch_lengths[global_multiple_edges]
-    #             idx_min_length = np.argmin(lengths)
-    #             other_edges = np.setdiff1d(range(len(multiple_edges)), idx_min_length)
-    #             edges_to_remove.append(multiple_edges[other_edges])
-    #             # Remove the current region among the regions that connect to the removed edges
-    #             for branch in index_list(global_multiple_edges, other_edges):
-    #                 regions = branch_regions[branch]
-    #                 kept_regions = regions[i != regions]
-    #                 branch_regions[branch] = kept_regions
-    #         correct_branches = np.delete(branches, edges_to_remove).tolist()
-    #         region_branches[i] = correct_branches
-
-    # Return outputs
-    return region_branches, branch_coordinates, branch_regions, branch_junctions
+    return region_branches, branch_coordinates, branch_regions
 
 
 def polygon_orientation(polygon):
@@ -530,7 +463,7 @@ def polygonize(label_image, neighbor_search_algorithm, connectivity=1, detect_bo
     # Build the skeleton network from the label image
     S = build_skeleton(label_image, connectivity, detect_boundaries)
     # Identify the regions from the skeleton
-    region_branches, branch_coordinates, _, branch_junctions = skeleton2regions(S, neighbor_search_algorithm)
+    region_branches, branch_coordinates, _ = skeleton2regions(S, neighbor_search_algorithm)
     # Represent each region as a polygon
     for region, branches in region_branches.items():
         if region == -1:  # artificial outer region
@@ -734,7 +667,7 @@ def splinegonize(label_image, neighbor_search_algorithm, connectivity=1, detect_
     # Build the skeleton network from the label image
     S = build_skeleton(label_image, connectivity, detect_boundaries)
     # Identify the regions from the skeleton
-    region_branches, branch_coordinates, branch_regions, branch_junctions = skeleton2regions(S, neighbor_search_algorithm)
+    region_branches, branch_coordinates, branch_regions = skeleton2regions(S, neighbor_search_algorithm)
     # Approximate each branch with a B-spline
     splines = branches2splines(branch_coordinates, degree_min, degree_max, continuity, tol)
     # Represent each region as a splinegon

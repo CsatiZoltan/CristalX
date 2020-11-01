@@ -490,8 +490,8 @@ def neighborhood(center, radius, norm, method='ball', bounds=None):
 
     Returns
     -------
-    neighbors : list of ndarray
-        List of length n, each entry being a 1D numpy array: the integer indices of the points
+    neighbors : tuple of ndarray
+        Tuple of length n, each entry being a 1D numpy array: the integer indices of the points
         that are in the neighborhood of :code:`center`.
 
 
@@ -510,27 +510,27 @@ def neighborhood(center, radius, norm, method='ball', bounds=None):
     Find the Moore neighborhood with range 2 the point (1) on the half-line [0, inf).
 
     >>> neighborhood((1,), 2, np.inf, bounds=[(0, np.inf)])
-    [array([0, 1, 2, 3])]
+    (array([0, 1, 2, 3]),)
 
     Find the von Neumann neighborhood with range 2 around the point (2, 2), restricted on
     the domain [0, 4] x [0, 3].
 
     >>> neighborhood((2, 2), 2, 1, bounds=[(0, 4), (0, 3)])
-    [array([2, 1, 2, 3, 0, 1, 2, 3, 4, 1, 2, 3]), array([0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3])]
+    (array([2, 1, 2, 3, 0, 1, 2, 3, 4, 1, 2, 3]), array([0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3]))
 
     Find the Moore neighborhood with range 1 around the point (0, -4) such that the neighbors
     lie on the half-plane [0, 2] x (-inf, -4].
 
     >>> neighborhood((0, -4), 1, np.inf, bounds=[(0, 2), (-np.inf, -4)])
-    [array([0, 1, 0, 1]), array([-5, -5, -4, -4])]
+    (array([0, 1, 0, 1]), array([-5, -5, -4, -4]))
 
     Find the sphere of radius 2, measured in the 1-norm, around the point (-1, 0, 3), within the
     half-space {(x,y,z) in Z^3 | y>=0}.
 
     >>> neighborhood((-1, 0, 3), 2, 1, 'sphere', [(-np.inf, np.inf), (0, np.inf), (-np.inf, np.inf)])  # doctest: +NORMALIZE_WHITESPACE
-    [array([-3, -2, -2, -1, -1,  0,  0,  1, -2, -1, -1,  0, -1]),
+    (array([-3, -2, -2, -1, -1,  0,  0,  1, -2, -1, -1,  0, -1]),
      array([0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2]),
-     array([3, 2, 4, 1, 5, 2, 4, 3, 3, 2, 4, 3, 3])]
+     array([3, 2, 4, 1, 5, 2, 4, 3, 3, 2, 4, 3, 3]))
 
     """
     dim = len(center)
@@ -565,7 +565,7 @@ def neighborhood(center, radius, norm, method='ball', bounds=None):
     within_bounds = reduce(np.logical_and, within_bounds)
 
     # Neighbors are given component-wise
-    neighbors = [candidates[i][within_distance & within_bounds] for i in range(dim)]
+    neighbors = tuple(candidates[i][within_distance & within_bounds] for i in range(dim))
     return neighbors
 
 

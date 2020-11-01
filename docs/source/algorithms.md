@@ -46,15 +46,11 @@ The solution is to use both topological and geometrical information. The skeleto
 
 ![geom_and_topo](images/geom_and_topo.svg)
 
-In the following, we describe two algorithms to find out which two grains are incident to a branch (remember that [always two grains neighbor a branch](#skeleton-of-the-image)). 
+In the following, we describe an algorithm to find out which two grains are incident to a branch (remember that [always two grains neighbor a branch](#skeleton-of-the-image)). 
 
-#### Algorithm 1
+#### Algorithm
 
 The neighbor search around every node of a branch is performed and the two most common labels are chosen. Since in the image representation the grain is a set of pixels having the same label, the selected two labels give the neighboring two grains to a branch.
-
-#### Algorithm 2
-
-Finding the neighboring labels to every node of a branch may take a lot of time for high-resolution images. Hence, another strategy has also been implemented in which the neighbor search is performed only for the end points of the branches. The common neighboring grains to the two end points of a branch are the grains that contain the branch. 
 
 #### Neighbor definitions
 
@@ -62,7 +58,7 @@ As described in the paper, certain scenarios necessitate to consider various nei
 
 
 
-Going back to the first configuration in the beginning of this section, Algorithm 1 or Algorithm 2 gives the following branch-grain connectivities.
+Going back to the first configuration in the beginning of this section, the algorithm gives the following branch-grain connectivities.
 
 ```math
 \bar{1} &: [\mathrm{I}] \\

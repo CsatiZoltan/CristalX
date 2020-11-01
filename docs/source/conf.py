@@ -146,7 +146,10 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 def remove_copied_files(app, exception):
-    os.remove('source/README.md')
+    try:  # ReadTheDocs fails with this command, but it works when used locally
+        os.remove('source/README.md')
+    except:
+        pass
 
 def setup(app):
     app.add_config_value('recommonmark_config', {

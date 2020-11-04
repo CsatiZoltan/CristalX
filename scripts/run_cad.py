@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 from grains import HAS_OCCT
 from grains.cad import polygonize, overlay_regions, splinegonize, regions2step, plot_splinegons, \
-    search_neighbor
+    plot_polygons, search_neighbor
 from grains.simulation import change_domain
 if HAS_OCCT:
     from OCC.Display.SimpleGui import init_display
@@ -38,15 +38,16 @@ else:
 test_image = np.load(image_matrix)
 
 # Polygon representation of the label image
-# polygons = polygonize(test_image, connectivity=1, look_around=2, close=True)
+polygons = polygonize(test_image, search_neighbor(2, np.inf), connectivity=1)
+fig = plot_polygons(list(polygons.values()))
+fig.show()
 # # Plot the polygonized regions superposed on the original image
 # ax = overlay_regions(test_image, {15: polygons[15]})
-# plt.show()
 
 # Splinegon representation of the label image
 splinegons, _ = splinegonize(test_image, search_neighbor(2, np.inf), connectivity=1,
                              degree_min=3, degree_max=3, continuity='C0', tol=1)
-# Plot the splinegonized regions
 plot_splinegons(list(splinegons.values()), color=(0, 0, 1))
+
 # Write the geometry to a STEP file
 regions2step(list(splinegons.values()), path.join(data_dir, 'microstructure.stp'))

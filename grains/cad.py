@@ -32,6 +32,7 @@ Functions
     region_as_splinegon
     splinegonize
     regions2step
+    plot_polygons
     plot_splinegons
     write_step_file
     plot_polygon
@@ -470,10 +471,8 @@ def polygonize(label_image, neighbor_search_algorithm, connectivity=1, detect_bo
             continue
         points_on_boundary = index_list(branch_coordinates, branches)
         poly = region_as_polygon(points_on_boundary, orientation, close)
-        plot_polygon(poly)
         polygons[region] = poly
-    overlay_skeleton_networkx(S.graph, S.coordinates, image=label_image)
-    plt.show()
+    # overlay_skeleton_networkx(S.graph, S.coordinates, image=label_image)
     return polygons
 
 
@@ -721,6 +720,38 @@ def regions2step(splinegons, filename, application_protocol='AP203'):
     write_step_file(compound, filename, application_protocol)
 
 
+def plot_polygons(polygons, **kwargs):
+    """Plots polygons.
+
+    Parameters
+    ----------
+    polygons : list
+        Each member of the list is a 2D numpy array with 2 columns, each row corresponding to a
+        vertex of the polygon, and the two columns giving the Cartesian coordinates of the vertices.
+
+    Other Parameters
+    ----------------
+    kwargs : optional
+        Keyword arguments supported by the constructor of the :class:`matplotlib.figure.Figure`
+        class.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure the polygons are plotted into.
+
+    See Also
+    --------
+    polygonize
+
+    """
+    fig, ax = plt.subplots()
+    ax.set_aspect('equal')
+    for poly in polygons:
+        plot_polygon(poly, ax)
+    return fig
+
+
 def plot_splinegons(splinegons, transparency=0.5, color='random'):
     """Plots splinegons.
 
@@ -801,7 +832,7 @@ def write_step_file(shape, filename, application_protocol='AP203'):
         raise IOError('File was not saved.')
 
 
-def plot_polygon(vertices, **kwargs):
+def plot_polygon(vertices, ax=None, **kwargs):
     """Plots a polygon.
 
     Parameters
@@ -809,6 +840,9 @@ def plot_polygon(vertices, **kwargs):
     vertices : ndarray
         2D ndarray of size Nx2, with each row designating a vertex and the two columns
         giving the x and y coordinates of the vertices, respectively.
+    ax : matplotlib.axes.Axes, optional
+        The `Axes` instance the polygon is plotted into. The default is None, in which case a new
+        `Axes` within a new figure is created.
     **kwargs : Line2D properties, optional
         Keyword arguments accepted by matplotlib.pyplot.plot
 
@@ -831,7 +865,8 @@ def plot_polygon(vertices, **kwargs):
     closed = np.allclose(first_vertex, last_vertex)
     if not closed:
         vertices = np.vstack((vertices, first_vertex))
-    plt.plot(vertices[:, 0], vertices[:, 1], **kwargs)
+    ax = ax or plt.figure().add_subplot()
+    ax.plot(vertices[:, 0], vertices[:, 1], **kwargs)
 
 
 def overlay_regions(label_image, polygons, axes=None):

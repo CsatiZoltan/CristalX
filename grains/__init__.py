@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import warnings
 warnings.simplefilter('module', ImportWarning)  # print import warnings once in a module
-warnings.simplefilter('always', RuntimeWarning)
+# warnings.simplefilter('always', RuntimeWarning)
 
 try:
     import OCC

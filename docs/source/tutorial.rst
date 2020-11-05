@@ -3,9 +3,7 @@
 A detailed workflow
 ===================
 
-Intro...
-
-Then it mainly contains links to the individual phases, such as segmentation, geometry reconstruction, Salome, meshing, simulation, etc.
+*CristalX* contains several modules that facilitate experimental and numerical works on polycrystalline microstructures. The usage of these modules is demonstrated on a complex example.
 
 .. toctree::
    :maxdepth: 2

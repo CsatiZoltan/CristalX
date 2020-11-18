@@ -6,3 +6,4 @@
    dev_documentation
    development
    contributing
+   versioning

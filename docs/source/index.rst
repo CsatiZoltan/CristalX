@@ -40,5 +40,6 @@ Global intro
    :maxdepth: 1
    :caption: Meta
 
+   Changelog <changelog>
    License <license>
 

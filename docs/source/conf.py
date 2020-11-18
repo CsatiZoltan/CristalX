@@ -18,6 +18,7 @@ from grains import HAS_PYINSTRUMENT, HAS_MED, HAS_OCCT
 # Recommonmark can only include Markdown files from the same directory
 from shutil import copy
 copy('../../README.md', '.')
+copy('../../CHANGELOG.md', '.')
 
 
 # -- Project information -----------------------------------------------------
@@ -147,6 +148,7 @@ html_static_path = ['_static']
 def remove_copied_files(app, exception):
     try:  # ReadTheDocs fails with this command, but it works when used locally
         os.remove('source/README.md')
+        os.remove('source/CHANGELOG.md')
     except:
         pass
 

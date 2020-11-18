@@ -22,7 +22,6 @@ dependencies:
   - ipykernel
   - pip
   - pip:
-    - sphinx-git
     - sphinx-toggleprompt
     - sphinx-hoverxref
     - nbsphinx

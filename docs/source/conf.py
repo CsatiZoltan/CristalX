@@ -47,7 +47,6 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinxcontrib.apidoc',
     'recommonmark',
-    'sphinx_git',
     'sphinx_copybutton',
     'sphinx_toggleprompt',
     'hoverxref.extension',

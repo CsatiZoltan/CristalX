@@ -607,7 +607,7 @@ def region_as_splinegon(boundary_splines):
     return splinegon.Face(), boundary.Wire()
 
 
-def make_holes(splinegons, region_branches, branch_regions):
+def make_holes(splinegons):
     """Creates holes for splinegons that contain other splinegons.
 
     When a smaller splinegon is embedded to a larger one, the boundary of the larger splinegon
@@ -626,10 +626,6 @@ def make_holes(splinegons, region_branches, branch_regions):
     splinegons : dict
         The keys in the dictionary correspond to the labels of the input image, while the values
         are `TopoDS_Face` objects, the surfaces of the regions.
-    region_branches : dict
-        For each region it contains the branch indices that bound that region.
-    branch_regions : dict
-        For each branch it contains the neighboring regions.
 
     Returns
     -------
@@ -637,30 +633,11 @@ def make_holes(splinegons, region_branches, branch_regions):
         The input dictionary modified such that the inclusions are removed from the matrix.
 
     """
-    # Isolated cycles in the skeleton bound inclusions
-    cycles = [branches[0] for region, branches in region_branches.items() if len(branches) == 1]
-    for cycle in cycles:
-        # A cycle is surrounded by two grains: the matrix and the inclusion
-        grain1_id, grain2_id = branch_regions[cycle]
-        if grain1_id == -1 or grain2_id == -1:
-            continue
-        grain1 = splinegons[grain1_id]
-        grain2 = splinegons[grain2_id]
-
-        # The surface area decides which grain is the matrix and which one is the inclusion
-        if face_area(grain1) > face_area(grain2):
-            matrix = grain1
-            inclusion = grain2
-        else:
-            matrix = grain2
-            inclusion = grain1
-
-        # Remove the inclusion from the matrix
-        matrix = subtract(matrix, inclusion)
-        if inclusion is grain1:
-            splinegons[grain2_id] = matrix
-        else:
-            splinegons[grain1_id] = matrix
+    # Find and successively subtract the embedded grains from the outer grains
+    for i, Ai in splinegons.items():
+        for j, Aj in splinegons.items():
+            if i != j and np.isclose(face_area(subtract(Aj, Ai)), 0):  # Aj is a proper subset of Ai
+                splinegons[i] = subtract(splinegons[i], Aj)
     return splinegons
 
 
@@ -749,7 +726,7 @@ def splinegonize(label_image, neighbor_search_algorithm, connectivity=1, detect_
         splinegons[region] = splinegon
         boundaries[region] = boundary
     # Handle the embedded grains
-    splinegons = make_holes(splinegons, region_branches, branch_regions)
+    splinegons = make_holes(splinegons)
     return splinegons, boundaries
 
 

@@ -6,10 +6,14 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- Grains embedded into other grains are now identified in the splinegon creation algorithm.
 
 
 
-## [1.0.1] - 2020-11-19]
+
+## [1.0.1] - 2020-11-19
 
 ### Added
 

@@ -15,6 +15,9 @@ manipulations:
 - `regions2step`
 - `plot_splinegons`
 - `splinegonize`
+- `face_area`
+- `subtract`
+- `make_holes`
 
 Functions
 ---------
@@ -30,6 +33,7 @@ Functions
     branches2splines
     fit_spline
     region_as_splinegon
+    make_holes
     splinegonize
     regions2step
     plot_polygons
@@ -38,6 +42,8 @@ Functions
     plot_polygon
     overlay_regions
     search_neighbor
+    face_area
+    subtract
 
 
 """
@@ -63,6 +69,10 @@ try:
         BRepBuilderAPI_MakeWire
     from OCC.TopoDS import TopoDS_Compound
     from OCC.BRep import BRep_Builder
+    from OCC.TopTools import TopTools_ListOfShape
+    from OCC.BRepAlgoAPI import BRepAlgoAPI_Cut, BRepAlgoAPI_Fuse
+    from OCC.GProp import GProp_GProps
+    from OCC.BRepGProp import brepgprop_SurfaceProperties
     from OCC.STEPControl import STEPControl_Writer, STEPControl_AsIs
     from OCC.Interface import Interface_Static_SetCVal
     from OCC.IFSelect import IFSelect_RetDone
@@ -163,29 +173,26 @@ def skeleton2regions(skeleton_network, neighbor_search_algorithm):
     Although the algorithms were created to require minimum user intervention, some parameters
     must be fine-tuned so as to achieve an optimal result in identifying the regions. Visualization
     plays an important role in it. Full automation is either not possible or would require a huge
-    computational cost. The shortcomings of the algorithms in this function are the following:
-
-    - It is assumed that only branches that connect two junctions form the boundary of a region.
-      This rule ensures that end points are not taken into account. However, this assumption also
-      rules out the identification of regions being contained in another regions as the embedded
-      region would be described by an isolated cycle.
-    - The recognition of which branches form a region is based on the premise that a node of a
-      branch belongs to a region if its `n`-pixel neighbourhood contains a pixel from that region.
-      Ideally, `n=1` would be used, meaning that the single-pixel width skeleton is located at most
-      1 pixel afar from the regions it lies among. This is true but the nodes of the skeleton
-      can be farther than 1 pixel from a region. Hence, `n` has to be a parameter of our model.
-      Increasing `n` helps in identifying the connecting regions to a node of a branch.
-      On the other hand, if `n` is too large, regions that "in reality" are not neighbors of a
-      branch will be included. Currently, we recommend trying different parameters `n`, plot the
-      reconstructed regions over the label image using the :func:`overlay_regions` function,
-      and see how good the result is. As a heuristic, start with `n=2`.
+    computational cost. The shortcoming of the algorithms in this function is the following.
+    The recognition of which branches form a region is based on the premise that a node of a branch
+    belongs to a region if its `n`-pixel neighbourhood contains a pixel from that region. Ideally,
+    `n=1` would be used, meaning that the single-pixel width skeleton is located at most 1 pixel
+    afar from the regions it lies among. This is true but the nodes of the skeleton can be farther
+    than 1 pixel from a region. Hence, `n` has to be a parameter of our model. Increasing `n` helps
+    in identifying the connecting regions to a node of a branch. On the other hand, if `n` is too
+    large, regions that "in reality" are not neighbors of a branch will be included. Currently, we
+    recommend trying different parameters `n`, plot the reconstructed regions over the label image
+    using the :func:`overlay_regions` function, and see how good the result is. As a heuristic,
+    start with `n=2`.
 
     """
     if not isinstance(skeleton_network, Skeleton):
         raise Exception('Skeleton object is expected.')
     S = skeleton_network
     skeleton_data = summarize(S)
-    mask = skeleton_data['branch-type'] == 2  # only junction-to-junction connections create regions
+    junction_to_junction = skeleton_data['branch-type'] == 2
+    isolated_cycle = skeleton_data['branch-type'] == 3
+    mask = junction_to_junction | isolated_cycle
     image_size = np.shape(S.source_image)
     image_index_grid = [(0, image_size[0] - 1), (0, image_size[1] - 1)]
 
@@ -600,6 +607,63 @@ def region_as_splinegon(boundary_splines):
     return splinegon.Face(), boundary.Wire()
 
 
+def make_holes(splinegons, region_branches, branch_regions):
+    """Creates holes for splinegons that contain other splinegons.
+
+    When a smaller splinegon is embedded to a larger one, the boundary of the larger splinegon
+    does not describe it properly. The smaller splinegons have to be subtracted to reproduce the
+    non-simply connected domain. As an analogy to material science, the intended application of
+    this module, we will use the term `matrix` for the larger grain and `inclusion` for the
+    smaller one. This function handles multiple inclusion in a matrix and should be called after
+    the splinegon regions have been constructed. No need to directly call :func:`make_holes` if
+    you use the :func:`splinegonize` utility function.
+
+    .. todo:: Implement it more generally, see the related `issue
+        <https://github.com/CsatiZoltan/CristalX/issues/37>`_.
+
+    Parameters
+    ----------
+    splinegons : dict
+        The keys in the dictionary correspond to the labels of the input image, while the values
+        are `TopoDS_Face` objects, the surfaces of the regions.
+    region_branches : dict
+        For each region it contains the branch indices that bound that region.
+    branch_regions : dict
+        For each branch it contains the neighboring regions.
+
+    Returns
+    -------
+    splinegons : dict
+        The input dictionary modified such that the inclusions are removed from the matrix.
+
+    """
+    # Isolated cycles in the skeleton bound inclusions
+    cycles = [branches[0] for region, branches in region_branches.items() if len(branches) == 1]
+    for cycle in cycles:
+        # A cycle is surrounded by two grains: the matrix and the inclusion
+        grain1_id, grain2_id = branch_regions[cycle]
+        if grain1_id == -1 or grain2_id == -1:
+            continue
+        grain1 = splinegons[grain1_id]
+        grain2 = splinegons[grain2_id]
+
+        # The surface area decides which grain is the matrix and which one is the inclusion
+        if face_area(grain1) > face_area(grain2):
+            matrix = grain1
+            inclusion = grain2
+        else:
+            matrix = grain2
+            inclusion = grain1
+
+        # Remove the inclusion from the matrix
+        matrix = subtract(matrix, inclusion)
+        if inclusion is grain1:
+            splinegons[grain2_id] = matrix
+        else:
+            splinegons[grain1_id] = matrix
+    return splinegons
+
+
 def splinegonize(label_image, neighbor_search_algorithm, connectivity=1, detect_boundaries=True,
                  degree_min=3, degree_max=8, continuity='C2', tol=1e-4):
     """Polygon representation of a label image.
@@ -684,6 +748,8 @@ def splinegonize(label_image, neighbor_search_algorithm, connectivity=1, detect_
         # Save the created regions and their boundaries
         splinegons[region] = splinegon
         boundaries[region] = boundary
+    # Handle the embedded grains
+    splinegons = make_holes(splinegons, region_branches, branch_regions)
     return splinegons, boundaries
 
 
@@ -934,6 +1000,68 @@ def search_neighbor(radius, norm, method='sphere'):
 
     """
     return partial(neighborhood, radius=radius, norm=norm, method=method)
+
+
+def face_area(face):
+    """Area of a face.
+
+    Parameters
+    ----------
+    face : TopoDS_Face
+        The face for which the area is searched.
+
+    Returns
+    -------
+    float
+        Area of the face.
+
+    Notes
+    -----
+    For references, see
+
+    - https://dev.opencascade.org/doc/refman/html/class_b_rep_g_prop.html#abd91b892df8d0f6b8571deed5562ca1f
+    - https://techoverflow.net/2019/06/13/how-to-compute-surface-area-of-topods_face-in-opencascade/
+    - https://github.com/tpaviot/pythonocc-demos/blob/master/examples/core_shape_properties.py#L48
+
+    """
+    properties = GProp_GProps()
+    brepgprop_SurfaceProperties(face, properties)
+    return properties.Mass()
+
+
+def subtract(shape1, shape2):
+    """Boolean difference of two shapes.
+
+    Parameters
+    ----------
+    shape1, shape2 : TopoDS_Shape
+        Surfaces.
+
+    Returns
+    -------
+    difference : TopoDS_Shape
+        The set difference :code:`shape1 \ shape2`.
+
+    Notes
+    -----
+    The implementation follows the following sources:
+
+    - https://techoverflow.net/2019/06/14/how-to-fuse-topods_shapes-in-opencascade-boolean-and/
+    - https://github.com/tpaviot/pythonocc-demos/blob/master/examples/core_boolean_fuzzy_cut_emmenthaler.py#L41-L54
+
+    For Boolean operations in Open CASCADE, see its `documentation
+    <https://dev.opencascade.org/doc/overview/html/specification__boolean_operations.html>`_.
+
+    """
+    arguments = TopTools_ListOfShape()
+    arguments.Append(shape1)
+    tools = TopTools_ListOfShape()
+    tools.Append(shape2)
+    difference = BRepAlgoAPI_Cut()
+    difference.SetTools(tools)
+    difference.SetArguments(arguments)
+    difference.Build()
+    return difference.Shape()
 
 
 def _spline_continuity_enum(continuity):

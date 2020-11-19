@@ -6,10 +6,15 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Unreleased]
 
+
+
+
+## [1.0.1] - 2020-11-19]
+
 ### Added
 
 - Document on describing the versioning scheme we will follow. [e74474c](https://github.com/CsatiZoltan/CristalX/commit/e74474cb3d1448a1784281f0aa934d3789197662)
-- Added a changelog to the project. [b48821b](https://github.com/CsatiZoltan/CristalX/commit/b48821b5e2df5923ba19e5895c20a3ec248815e9)
+- Added a changelog to the project. [b48821b](https://github.com/CsatiZoltan/CristalX/commit/b48821b5e2df5923ba19e5895c20a3ec248815e9), [f6ca9c1](https://github.com/CsatiZoltan/CristalX/commit/f6ca9c1da56a77af5696c1262d78f1184c6b1deb)
 
 
 
@@ -26,5 +31,6 @@ This is the initial release of *CristalX*.
 
 
 
-[unreleased]: https://github.com/CsatiZoltan/CristalX/compare/v1.0.0...HEAD
+[unreleased]: https://github.com/CsatiZoltan/CristalX/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/CsatiZoltan/CristalX/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/CsatiZoltan/CristalX/compare/981dbcd...v1.0.0

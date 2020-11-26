@@ -3,6 +3,8 @@ import warnings
 warnings.simplefilter('module', ImportWarning)  # print import warnings once in a module
 # warnings.simplefilter('always', RuntimeWarning)
 
+__version__ = '1.0.1'
+
 try:
     import OCC
     HAS_OCCT = True

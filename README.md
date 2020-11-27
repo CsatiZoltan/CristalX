@@ -10,10 +10,6 @@ Identification of individual grains in microscopic images
 
 
 
-This project is under heavy development. As the modules are under refactoring, this work is not yet suitable for the public. Stay tuned...
-
-
-
 ## Features
 
 -  Image segmentation to identify the grains in a microstructure

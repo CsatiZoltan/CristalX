@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Added
 
-- Grains embedded into other grains are now identified in the splinegon creation algorithm.
+- Grains embedded into other grains are now identified in the splinegon creation algorithm. [4cef7ec](https://github.com/CsatiZoltan/CristalX/commit/4cef7ecbbe4c3fc5cddb9947b29b3d0b454eecb8), [6c4ad0a](https://github.com/CsatiZoltan/CristalX/commit/6c4ad0aff2c4dae49fb648656a94b14436925bed)
 
 
 

@@ -26,7 +26,9 @@ As there is no unconditionally best versioning system, we came up with our own, 
 
 Similarly to SemVer, when one of the digits increases, the ones right to it are set to zero (e.g. 1.0.1 --> 1.0.2,  1.0.3 --> 1.1.0,  1.8.6 --> 2.0.0).
 
-We try to keep backward compatibility. Insignificant changes are postponed, and are included as part of a MINOR release. If you often feel the need to introduce changes to the function signatures, rather **add** new functions and give **deprecation notices** than remove or modify existing ones. This does not lead to code bloat in the long run because deprecated syntax is removed from time to time.
+We try to keep backward compatibility. Insignificant changes are postponed, and are included as part of a MINOR release. If you often feel the need to introduce changes to the function signatures, rather **add** new functions and give **deprecation notices** than remove or modify existing ones. This does not lead to code bloat in the long run because deprecated syntax is removed from time to time. To mark a function, a method or a class as deprecated, import the `deprecated` function from the *deprecation* package and [follow its syntax](https://deprecation.readthedocs.io/en/latest/index.html#deprecation.deprecated).
+
+The *master* branch of the Git repository contains the latest developments since the last published release. These unreleased modifications are allowed to contain incompatibilities (changes in the function signatures, etc.) compared to the latest release. This flexibility is essential for rapid prototyping in research codes like *CristalX*. However, these possible incompatibilities must be fixed for the next release, see the previous paragraph.
 
 
 

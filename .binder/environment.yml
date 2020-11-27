@@ -20,6 +20,7 @@ dependencies:
   - pyinstrument
   - pandoc
   - ipykernel
+  - deprecation
   - pip
   - pip:
     - sphinx-toggleprompt

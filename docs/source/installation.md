@@ -26,11 +26,29 @@ If you want more control (debugging, inspecting variables, etc.) over *CristalX*
 
 ### Obtain the source
 
-You can download the latest version from [GitHub](https://github.com/CsatiZoltan/CristalX/archive/master.zip) or you can clone it with *Git*:
+If you are a user of *CristalX*, the best is to get the latest release:
 
-```bash
-git clone https://github.com/CsatiZoltan/CristalX.git
-```
+-  download it from [GitHub](https://github.com/CsatiZoltan/CristalX/releases)
+-  or clone it with Git:
+
+   ```bash
+   git clone https://github.com/CsatiZoltan/CristalX.git
+   cd CristalX
+   git checkout v<version_number>
+   ```
+
+   where `<version_number>` is the version you want to use. E.g. if you want to use version 1.0.1, you need to type `git checkout v1.0.1`. See the [available tags](https://github.com/CsatiZoltan/CristalX/tags), corresponding to the published releases, for the possibilities.
+
+   Note that in this case, you will be in a "detached HEAD" state, meaning that the HEAD does not point to a branch but to the specific tag. Any commit you make in this state will not be associated with a branch. Therefore, if you want to develop or contribute to *CristalX*, check out the *master* branch (see the next paragraph).
+
+If you want to develop *CristalX* or simply want to have access to the latest features, you need to fetch the latest state:
+
+-  download it from [GitHub](https://github.com/CsatiZoltan/CristalX/archive/master.zip)
+-  or clone it with Git:
+
+   ```bash
+   git clone https://github.com/CsatiZoltan/CristalX.git
+   ```
 
 
 

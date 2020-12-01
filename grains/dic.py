@@ -136,6 +136,7 @@ class DIC:
 
         See Also
         --------
+        equivalent_strain
         plot_strain
         :func:`numpy.gradient`
 
@@ -194,6 +195,62 @@ class DIC:
         else:
             raise Exception('Strain measure {0} is not implemented.'.format(strain_measure))
         return strain_tensor
+
+    @staticmethod
+    def equivalent_strain(strain_tensor, strain_measure):
+        r"""Computes a scalar quantity from the strain tensor.
+
+        Parameters
+        ----------
+        strain_tensor : ndarray
+            Components of the strain tensor :math:`\boldsymbol{\varepsilon}` as an
+            :math:`m \times n \times 3` array. The first two dimensions correspond to the
+            grid points they are determined at, the third dimension gives the components
+            of the tensor in the following order: :math:`\varepsilon_{11}, \varepsilon_{12},
+            \varepsilon_{22}`.
+        strain_measure : {'von Mises'}
+            One of the following strain measures.
+
+            - 'von Mises'
+
+                .. math::
+                    \varepsilon_M := \sqrt{\frac{2}{3} \boldsymbol{\varepsilon}^{\mathrm{dev}} :
+                    \boldsymbol{\varepsilon}^{\mathrm{dev}}} = \sqrt{\frac{2}{3} \left(
+                    \boldsymbol{\varepsilon}:\boldsymbol{\varepsilon} - \frac{1}{3}(\mathrm{tr}
+                    \boldsymbol{\varepsilon})^2 \right)}
+
+                where :math:`\boldsymbol{\varepsilon}^{\mathrm{dev}}` is the deviatoric part of
+                the strain tensor. This can further be simplified (see the notes below) to
+
+                .. math::
+                    \varepsilon_M = \frac{2}{3}\sqrt{\varepsilon_{11}^2 + \varepsilon_{22}^2 +
+                    3\varepsilon_{12}^2 - \varepsilon_{11}\varepsilon_{22}}
+
+        Returns
+        -------
+        ndarray
+            Equivalent strain at the grid points, given as an :math:`m \times n` numpy array.
+
+        See Also
+        --------
+        strain
+
+        Notes
+        -----
+        Under plane stress conditions, :math:`\varepsilon_{33}` is not zero, but it is computed as
+
+        .. math::
+            \varepsilon_{33} = -\frac{\nu}{E}(\sigma_{11} + \sigma_{22})
+
+        Since the stresses are not known from the DIC, one must settle with plane strain
+        conditions where :math:`\varepsilon_{33} = 0`. This is what we follow in the :class:`DIC`
+        class. We remark that in stereo-DIC multiple cameras are used, which allows the
+        measurement of :math:`\varepsilon_{33}`.
+
+        """
+        eps_11, eps_12, eps_22 = strain_tensor.transpose((2, 0, 1))  # unpacking works in 1st dim
+        if strain_measure == 'von Mises':
+            return 2/3*np.sqrt(eps_11**2 + eps_22**2 + 3*eps_12**2 - eps_11*eps_22)
 
     def plot_displacement(self, component, ax=None):
         """Plots a component of the displacement field.

@@ -11,11 +11,20 @@ Classes
 
     DIC
 
+Functions
+---------
+.. autosummary::
+    :toctree: functions/
+
+    plot_strain
+
 """
 import numpy as np
 from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
+from deprecation import deprecated
 
+from grains import __version__
 from grains.geometry import TriMesh
 
 
@@ -222,6 +231,12 @@ class DIC:
         ax.set_aspect('equal')
         ax.imshow(field)
 
+    @deprecated(deprecated_in='1.1.0', current_version=__version__, removed_in='1.3.0',
+                details='This method will be modified to perform the plotting only. The '
+                        'computation of the various strain measures will be done in the '
+                        ':meth:`strain` method. The function that replaces this function '
+                        'will keep the same name and is currently implemented outside this '
+                        'class.')
     def plot_strain(self, component, minval=None, maxval=None, colorbar=True):
         """Plots a component of the infinitesimal strain tensor.
 
@@ -278,6 +293,8 @@ class DIC:
             cbar = plt.colorbar(orientation='horizontal', format='%.2f', aspect=100,
                                 label=label)
             cbar.ax.set_xlabel(label, fontsize=30)
+        else:
+            plt.gca().set_xlabel(label, fontsize=30)
 
     def set_transformation(self, origin, pixels_per_physicalunit):
         """Sets the transformation rule between the pixel and the physical coordinate systems.
@@ -628,3 +645,41 @@ class DIC:
         self.plot_physicalgrid(ax)
         mesh.plot(ax=ax, *args, **kwargs)
         return ax
+
+
+@deprecated(deprecated_in='1.1.0', current_version=__version__, removed_in='1.3.0',
+            details='This function will be a static method of the :code:`DIC` class. '
+                    'See also the deprecation warning of :meth:`DIC.plot_strain`.')
+def plot_strain(strain, minval=None, maxval=None, colorbar=True, label=''):
+    r"""Plots a scalar strain field.
+
+    Parameters
+    ----------
+    strain : ndarray
+        Scalar strain field sampled on an m-by-n grid, given as a 2D numpy array.
+    minval, maxval : float, optional
+        Set the color scaling for the image by fixing the values that map to the colormap
+        color limits. If :code:`minval` is not provided, the limit is determined from the
+        minimum value of the data. Similarly for :code:`maxval`.
+    colorbar : bool, optional
+        If True, a horizontal colorbar is placed below the strain map. The default is True.
+    label : str, optional
+        Label describing the strain field. LaTeX code is also accepted, e.g.
+        `r'$\varepsilon_{yy}$'`. If not given, no text is displayed.
+
+    Returns
+    -------
+    None
+
+    See Also
+    --------
+    :meth:`DIC.strain`
+
+    """
+    plt.matshow(strain, interpolation='spline36', vmin=minval, vmax=maxval, alpha=1)
+    if colorbar:
+        cbar = plt.colorbar(orientation='horizontal', format='%.2f', aspect=100,
+                            label=label)
+        cbar.ax.set_xlabel(label, fontsize=30)
+    else:
+        plt.gca().set_xlabel(label, fontsize=30)

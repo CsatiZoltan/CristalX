@@ -158,14 +158,10 @@ class DIC:
         array([[0.001, 0.001, 0.001, 0.001],
                [0.001, 0.001, 0.001, 0.001],
                [0.001, 0.001, 0.001, 0.001]])
-        >>> E[:, :, 2]
-        array([[0., 0., 0., 0.],
-               [0., 0., 0., 0.],
-               [0., 0., 0., 0.]])
-        >>> E[:, :, 1]
-        array([[0., 0., 0., 0.],
-               [0., 0., 0., 0.],
-               [0., 0., 0., 0.]])
+        >>> np.allclose(E[:, :, 2], 0)
+        True
+        >>> np.allclose(E[:, :, 1], 0)
+        True
 
         The Green-Lagrange strain tensor is slightly different. Comparing with the infinitesimal
         strain tensor shows how good the assumption of small deformations is.
@@ -178,15 +174,15 @@ class DIC:
 
         The other two strain components remain zero.
 
-        >>> np.all(E_gl[:, :, 1:2] == 0)
+        >>> np.allclose(E_gl[:, :, 1:2], 0)
         True
 
         """
         strain_tensor = np.zeros((*self.u.shape, 3))
-        dudx = np.gradient(self.u)[1]
-        dudy = np.gradient(self.u)[0]
-        dvdx = np.gradient(self.v)[1]
-        dvdy = np.gradient(self.v)[0]
+        dudx = np.gradient(self.u, edge_order=2)[1]
+        dudy = np.gradient(self.u, edge_order=2)[0]
+        dvdx = np.gradient(self.v, edge_order=2)[1]
+        dvdy = np.gradient(self.v, edge_order=2)[0]
         if strain_measure == 'infinitesimal':
             strain_tensor[:, :, 0] = dudx
             strain_tensor[:, :, 1] = 0.5*(dudy + dvdx)

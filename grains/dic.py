@@ -20,8 +20,20 @@ from grains.geometry import TriMesh
 
 
 class DIC:
-    """
-    Performs operations on digital image correlation data.
+    """Performs operations on digital image correlation data.
+
+    Parameters
+    ----------
+    u, v : ndarray
+        The two components of the displacement field, discretized on a rectangular grid.
+
+    Raises
+    ------
+    ValueError
+        If the displacement components are not discretized on the same grid or if the grid size
+        is not at least 3-by-3. This latter requirement is not a problem in practice (which
+        camera is not capable of shooting photos in 9 pixels resolution?), while it allows the
+        evaluation of the numerical derivatives with second order accuracy on the boundaries too.
 
     Notes
     -----
@@ -54,10 +66,129 @@ class DIC:
     """
 
     def __init__(self, u, v):
+        if np.shape(u) <= (3, 3) or np.shape(u) <= (3, 3):
+            raise ValueError('Displacement field must be given on a grid with minimum size 3-by-3.')
+        if np.size(u) != np.size(v):
+            raise ValueError('Displacement components must have the same size.')
         self.u = u
         self.v = v
         self.origin = None
         self.scale = None
+
+    def strain(self, strain_measure):
+        r"""Computes the strain tensor from the displacement vector.
+
+        The symmetric strain tensor :math:`\boldsymbol{\varepsilon}` with components
+
+        .. math::
+            \boldsymbol{\varepsilon} = \begin{pmatrix}
+                                             \varepsilon_{11} & \varepsilon_{12} \\
+                                             \varepsilon_{21} & \varepsilon_{22}
+                                         \end{pmatrix}
+
+        is computed for the given strain measure. The partial derivatives of the displacement
+        field :math:`(u,v)`, available on an :math:`m \times n` grid, are computed with numerical
+        differentiation with second order accuracy.
+
+        Parameters
+        ----------
+        strain_measure : {'infinitesimal', 'Green-Lagrange'}
+            One of the following strain measures.
+
+            - 'infinitesimal'
+
+                .. math::
+                    \varepsilon_{11} = \frac{\partial u}{\partial x} \\
+                    \varepsilon_{12} = \frac{1}{2} \left( \frac{\partial u}{\partial y} +
+                    \frac{\partial v}{\partial x} \right) \\
+                    \varepsilon_{22} = \frac{\partial v}{\partial y} \\
+
+            - 'Green-Lagrange'
+
+                .. math::
+                    \varepsilon_{11} = \frac{1}{2} \left( 2\frac{\partial u}{\partial x} +
+                    \left(\frac{\partial u}{\partial x}\right)^2  + \left(\frac{\partial v}{
+                    \partial x}\right)^2 \right) \\
+                    \varepsilon_{12} = \frac{1}{2} \left( \frac{\partial u}{\partial y} +
+                    \frac{\partial v}{\partial x} + \frac{\partial u}{\partial x} \frac{\partial
+                    u}{\partial y} + \frac{\partial v}{\partial x} \frac{\partial v}{\partial
+                    y} \right) \\
+                    \varepsilon_{22} = \frac{1}{2} \left( 2\frac{\partial v}{\partial y} +
+                    \left(\frac{\partial u}{\partial y}\right)^2  + \left(\frac{\partial v}{
+                    \partial y}\right)^2 \right) \\
+
+        Returns
+        -------
+        strain_tensor : ndarray
+            Components of the strain tensor as an :math:`m \times n \times 3` array. The first
+            two dimensions correspond to the grid points they are determined at, the third dimension
+            gives the components of the tensor in the following order: :math:`\varepsilon_{11},
+            \varepsilon_{12}, \varepsilon_{22}`.
+
+        See Also
+        --------
+        plot_strain
+        :func:`numpy.gradient`
+
+        Notes
+        -----
+        The derivatives of the displacement field are computed in the the physical coordinate
+        system.
+
+        Examples
+        --------
+        Consider a rectangular body with a linear displacement function in horizontal
+        direction and no displacement vertically. The deformation of the body is such that
+        only the horizontal strain is nonzero.
+
+        >>> u = np.array([[0, 1e-3, 2e-3, 3e-3], [0, 1e-3, 2e-3, 3e-3], [0, 1e-3, 2e-3, 3e-3]])
+        >>> v = np.zeros((3,4))
+        >>> d = DIC(u, v)
+        >>> E = d.strain('infinitesimal')
+        >>> E[:, :, 0]
+        array([[0.001, 0.001, 0.001, 0.001],
+               [0.001, 0.001, 0.001, 0.001],
+               [0.001, 0.001, 0.001, 0.001]])
+        >>> E[:, :, 2]
+        array([[0., 0., 0., 0.],
+               [0., 0., 0., 0.],
+               [0., 0., 0., 0.]])
+        >>> E[:, :, 1]
+        array([[0., 0., 0., 0.],
+               [0., 0., 0., 0.],
+               [0., 0., 0., 0.]])
+
+        The Green-Lagrange strain tensor is slightly different. Comparing with the infinitesimal
+        strain tensor shows how good the assumption of small deformations is.
+
+        >>> E_gl = d.strain('Green-Lagrange')
+        >>> E_gl[:, :, 0] - E[:, :, 0]
+        array([[5.e-07, 5.e-07, 5.e-07, 5.e-07],
+               [5.e-07, 5.e-07, 5.e-07, 5.e-07],
+               [5.e-07, 5.e-07, 5.e-07, 5.e-07]])
+
+        The other two strain components remain zero.
+
+        >>> np.all(E_gl[:, :, 1:2] == 0)
+        True
+
+        """
+        strain_tensor = np.zeros((*self.u.shape, 3))
+        dudx = np.gradient(self.u)[1]
+        dudy = np.gradient(self.u)[0]
+        dvdx = np.gradient(self.v)[1]
+        dvdy = np.gradient(self.v)[0]
+        if strain_measure == 'infinitesimal':
+            strain_tensor[:, :, 0] = dudx
+            strain_tensor[:, :, 1] = 0.5*(dudy + dvdx)
+            strain_tensor[:, :, 2] = dvdy
+        elif strain_measure == 'Green-Lagrange':
+            strain_tensor[:, :, 0] = 0.5*(2*dudx + dudx**2 + dvdx**2)
+            strain_tensor[:, :, 1] = 0.5*(dudy + dvdx + dudx*dudy + dvdx*dvdy)
+            strain_tensor[:, :, 2] = 0.5*(2*dvdy + dudy**2 + dvdy**2)
+        else:
+            raise Exception('Strain measure {0} is not implemented.'.format(strain_measure))
+        return strain_tensor
 
     def plot_displacement(self, component, ax=None):
         """Plots a component of the displacement field.

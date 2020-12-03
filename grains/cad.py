@@ -92,8 +92,8 @@ def build_skeleton(label_image, connectivity=1, detect_boundaries=True):
 
     Parameters
     ----------
-    label_image : 2D ndarray with signed integer entries
-        Label image, representing a segmented image.
+    label_image : ndarray
+        Labeled input image, represented as a 2D numpy array of positive integers.
     connectivity : {1,2}, optional
         A connectivity of 1 (default) means pixels sharing an edge will be considered neighbors.
         A connectivity of 2 means pixels sharing a corner will be considered neighbors.
@@ -414,8 +414,8 @@ def polygonize(label_image, neighbor_search_algorithm, connectivity=1, detect_bo
 
     Parameters
     ----------
-    label_image : 2D ndarray with signed integer entries
-        Label image, representing a segmented image.
+    label_image : ndarray
+        Labeled input image, represented as a 2D numpy array of positive integers.
     neighbor_search_algorithm : functools.partial
         Specifies which algorithm to use for constructing the branch-region connectivity.
         The function to be passed (along with its arguments) is :func:`skeleton2regions`.
@@ -647,8 +647,8 @@ def splinegonize(label_image, neighbor_search_algorithm, connectivity=1, detect_
 
     Parameters
     ----------
-    label_image : 2D ndarray with signed integer entries
-        Label image, representing a segmented image.
+    label_image : ndarray
+        Labeled input image, represented as a 2D numpy array of positive integers.
     neighbor_search_algorithm : functools.partial
         Specifies which algorithm to use for constructing the branch-region connectivity.
         The function to be passed (along with its arguments) is :func:`skeleton2regions`.
@@ -917,8 +917,8 @@ def overlay_regions(label_image, polygons, axes=None):
 
     Parameters
     ----------
-    label_image : 2D ndarray with signed integer entries
-        Label image, representing a segmented image.
+    label_image : ndarray
+        Labeled input image, represented as a 2D numpy array of positive integers.
     polygons : dict
         The keys in the dictionary correspond to the labels of the input image, while the values
         are ndarray objects with two columns, the x and y coordinates of the polygons.

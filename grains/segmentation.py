@@ -262,7 +262,7 @@ class Segmentation:
         array : ndarray
             An image represented as a numpy array.
         is_label_image : bool
-            True if the array represents a label image
+            True if the array represents a labeled image.
 
         """
         # local_vars = list(locals().items())

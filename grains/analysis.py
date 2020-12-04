@@ -23,6 +23,7 @@ Functions
     plot_prop
     plot_grain_characteristic
     show_label_image
+    label_image_apply_mask
 
 """
 
@@ -414,3 +415,30 @@ def show_label_image(label_image, alpha=1):
     if 0 in label_image:
         region_colors[0] = [0, 0, 0]
     imshow(label2rgb(label_image, colors=region_colors), alpha=alpha)
+
+
+def label_image_apply_mask(label_image, mask, value):
+    """Changes parts of a labeled image to a given value.
+
+    Convenience function, equivalent to :code:`label_image[mask] = value` but the original array
+    :code:`label_image` is `not` overwritten.
+
+    Parameters
+    ----------
+    label_image : ndarray
+        Labeled input image, represented as a 2D numpy array of positive integers.
+    mask : ndarray
+        Boolean array of the same size as :code:`label_image`, marking the pixels that will be
+        replaced by :code:`value`.
+    value : int
+        The masked pixels are replaced by this value.
+
+    Returns
+    -------
+    ndarray
+        Copy of the input image, its selected pixels being replaced by the given value.
+
+    """
+    label_image = label_image.copy()
+    label_image[mask] = value
+    return label_image

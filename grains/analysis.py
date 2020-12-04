@@ -23,6 +23,8 @@ Functions
     plot_prop
     plot_grain_characteristic
     show_label_image
+    label_image_skeleton
+    thicken_skeleton
     label_image_apply_mask
 
 """
@@ -38,6 +40,8 @@ from skimage.color import label2rgb
 from skimage.measure._find_contours import find_contours
 from skimage.measure._marching_cubes_lewiner import marching_cubes_lewiner as marching_cubes
 from skimage.measure import regionprops
+from skimage.segmentation import find_boundaries
+from skimage.morphology import skeletonize, dilation, square
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -415,6 +419,56 @@ def show_label_image(label_image, alpha=1):
     if 0 in label_image:
         region_colors[0] = [0, 0, 0]
     imshow(label2rgb(label_image, colors=region_colors), alpha=alpha)
+
+
+def label_image_skeleton(label_image):
+    """Skeleton of a labeled image.
+
+    The skeleton of a labeled image is a single-pixel wide network that separates the labeled
+    regions.
+
+    Parameters
+    ----------
+    label_image : ndarray
+        Labeled input image, represented as a 2D numpy array of positive integers.
+
+    Returns
+    -------
+    ndarray
+        A 2D bool numpy array having the same size as :code:`label_image`, where True represents
+        the skeleton pixels.
+
+    See Also
+    --------
+    thicken_skeleton
+
+    """
+    boundaries = find_boundaries(label_image)
+    # Erode the two-pixel wide boundaries to obtain singe-pixel wide network
+    return skeletonize(boundaries)
+
+
+def thicken_skeleton(skeleton, thickness):
+    """Thickens a skeleton by morphological dilation.
+
+    Parameters
+    ----------
+    skeleton : ndarray
+        Skeleton of a binary image, represented as a bool 2D numpy array.
+    thickness : int
+        Thickness of the resulting boundaries.
+
+    Returns
+    -------
+    ndarray
+        A 2D bool numpy array, where True represents the thickened skeleton.
+
+    See Also
+    --------
+    label_image_skeleton
+
+    """
+    return dilation(skeleton, square(thickness))
 
 
 def label_image_apply_mask(label_image, mask, value):

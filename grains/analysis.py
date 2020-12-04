@@ -22,6 +22,7 @@ Functions
     feret_diameter
     plot_prop
     plot_grain_characteristic
+    show_label_image
 
 """
 
@@ -31,7 +32,8 @@ import warnings
 import numpy as np
 from scipy.interpolate import griddata
 from scipy.spatial.distance import pdist
-from skimage import io, color
+from skimage.io import imshow, show
+from skimage.color import label2rgb
 from skimage.measure._find_contours import find_contours
 from skimage.measure._marching_cubes_lewiner import marching_cubes_lewiner as marching_cubes
 from skimage.measure import regionprops
@@ -84,8 +86,8 @@ class Analysis:
             raise Exception('Label image must be a matrix, received an array of dimension {0}.'.format(np.ndim(self.label_image)))
         # Optionally show the loaded image
         if self.__interactive_mode:
-            io.imshow(color.label2rgb(self.label_image))
-            io.show()
+            imshow(label2rgb(self.label_image))
+            show()
             print('Image successfully loaded.')
         # Initialize a dictionary holding the grain properties
         self.properties = {key: None for key in ['label', 'area', 'centroid',
@@ -192,7 +194,7 @@ class Analysis:
 
         """
         nlabel = len(np.unique(self.label_image))
-        io.imshow(color.label2rgb(self.label_image, colors=np.random.random((nlabel, 3))))
+        imshow(label2rgb(self.label_image, colors=np.random.random((nlabel, 3))))
         # Display information on the grains, if requested
         if grain_property is not None:
             grain_property = self.properties[grain_property]
@@ -385,3 +387,30 @@ def plot_grain_characteristic(characteristic, centers, interpolation='linear',
     ax.plot(centers[:, 0], centers[:, 1], parsed_options['center_marker'],
             markeredgecolor='black', markerfacecolor='black')
     ax.set_aspect('equal')
+
+
+def show_label_image(label_image, alpha=1):
+    """Displays a labeled image.
+
+    A random color is associated with each labeled region. If boundary pixels are present in the
+    image, they are plotted in black.
+
+    Parameters
+    ----------
+    label_image : ndarray
+        Labeled input image, represented as a 2D numpy array of non-negative integers.
+        The label 0 is assumed to denote a boundary pixel.
+    alpha : float, optional
+        Opacity of colorized labels. Must be within [0, 1].
+
+    Returns
+    -------
+    None
+
+    """
+    label_image = label_image.astype(int)
+    n_label = len(np.unique(label_image))
+    region_colors = np.random.random((n_label, 3))
+    if 0 in label_image:
+        region_colors[0] = [0, 0, 0]
+    imshow(label2rgb(label_image, colors=region_colors), alpha=alpha)

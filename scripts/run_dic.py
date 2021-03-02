@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from grains import HAS_TABLES
 from grains.geometry import TriMesh
-from grains.dic import DIC
+from grains.dic import DIC, plot_strain
 
 show_plots = True  # set to False to prevent from showing the plots
 
@@ -24,12 +24,15 @@ plt.rcParams.update(params)
 # plt.rcParams
 
 # Load the experimental data
-dic_snapshot = join(data_dir, '1_dic_field.npy')
+# dic_snapshot = join(data_dir, '1_dic_field.npy')
+dic_snapshot = join(data_dir, '2_dic_field.npy')
 if path.isfile(dic_snapshot):
     u_restricted, v_restricted, _ = np.load(dic_snapshot, allow_pickle=True)
 else:
     # Try to load it from the raw data
-    dic_data = join(data_dir, 'test.hdf')  # 6.3 GB, not committed to the Github repository
+    # dic_data = join(data_dir, 'test.hdf')  # 6.3 GB, not committed to the Github repository
+    dic_data = join(data_dir, 'FULLTEST_fields.hdf')  # 35.6 GB, not committed to the Github
+    # repository
     if path.isfile(dic_data):
         if HAS_TABLES:
             # Fetch the displacement field from the series of field measurements
@@ -49,7 +52,8 @@ else:
 
             # Crop data which belongs to the testing device (the indices were obtained using:
             # `selected = plt.ginput(-1, timeout=-1))`
-            restricted_region = np.s_[time, 111:914, 5:1963, :]
+            # restricted_region = np.s_[time, 111:914, 5:1963, :]
+            restricted_region = np.s_[time, 800:2175, 860:3000, :]
             u_component = np.s_[:, :, 0]
             v_component = np.s_[:, :, 1]
             u_restricted = measurement[restricted_region][u_component]
@@ -58,7 +62,8 @@ else:
             # Save the displacement components
             displacement_field = (u_restricted, v_restricted, 'Time step: 350 out of 400, '
                                   'cropped: 111:914, 5:1963 out of dimensions 1024x2048.')
-            np.save(join(data_dir, '1_dic_field.npy'), displacement_field)
+            # np.save(join(data_dir, '1_dic_field.npy'), displacement_field)
+            np.save(join(data_dir, '2_dic_field.npy'), displacement_field)
         else:
             raise ImportError('The PyTables package is needed to load the dataset.')
     else:
@@ -66,7 +71,8 @@ else:
 dic = DIC(u_restricted, v_restricted)
 if show_plots:
     # Show the axial strain on the cropped region
-    dic.plot_strain((1, 1), minval=0, maxval=0.2)
+    infinitesimal_strain = dic.strain('infinitesimal')
+    plot_strain(infinitesimal_strain[:, :, 0], colorbar=True, label=r'$\varepsilon_{xx}$')
     plt.show()
 
 # Set the scale, i.e. the physical length corresponding to the image data
@@ -75,19 +81,19 @@ dic.plot_physicalgrid()
 plt.show()
 
 # Superimpose the meshed domain of the numerical problem and the DIC grid
-mesh_file = join(data_dir, '1_mesh_extended_scaled.npz')
-with np.load(mesh_file, allow_pickle=True) as mesh:
-    if np.alltrue([variable_name in {'nodes', 'elements', 'element_groups', 'node_groups'} for
-                   variable_name in mesh]):
-        nodes = mesh['nodes']
-        elements = mesh['elements']
-        element_groups = mesh['element_groups']
-        node_groups = mesh['node_groups']
-    else:
-        raise Exception('Mesh must contain variables "nodes", "elements", "element_groups" and '
-                        '"node_groups".')
-mesh = TriMesh(nodes, elements)
-ax = dic.plot_superimposedmesh(mesh)
-ax.set_xlim(17.25, 19.25)
-ax.set_ylim(-10.8, -9.4)
-plt.show()
+# mesh_file = join(data_dir, '1_mesh_extended_scaled.npz')
+# with np.load(mesh_file, allow_pickle=True) as mesh:
+#     if np.alltrue([variable_name in {'nodes', 'elements', 'element_groups', 'node_groups'} for
+#                    variable_name in mesh]):
+#         nodes = mesh['nodes']
+#         elements = mesh['elements']
+#         element_groups = mesh['element_groups']
+#         node_groups = mesh['node_groups']
+#     else:
+#         raise Exception('Mesh must contain variables "nodes", "elements", "element_groups" and '
+#                         '"node_groups".')
+# mesh = TriMesh(nodes, elements)
+# ax = dic.plot_superimposedmesh(mesh)
+# ax.set_xlim(17.25, 19.25)
+# ax.set_ylim(-10.8, -9.4)
+# plt.show()

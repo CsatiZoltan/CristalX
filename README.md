@@ -33,3 +33,27 @@ Identification of individual grains in microscopic images
 ## Contributing
 
 Read the `docs/source/contributing.md` file.
+
+
+
+## Citing *CristalX*
+
+We have an article [freely available on SoftwareX](https://doi.org/10.1016/j.softx.2021.100669), showing the background and the design of *CristalX*.
+
+When using *CristalX* in scientific publications, please cite the following paper:
+- Csati, Z.; Witz, J.-F.; Magnier, V.; Bartali, A. E.; Limodin, N. & Najjar, D. *CristalX: Facilitating simulations for experimentally obtained grain-based microstructures*. SoftwareX, **2021**, *14*, 100669
+
+BibTeX entry:
+```
+@Article{Csati2021,
+  author    = {Zoltan Csati and Jean-Fran{\c{c}}ois Witz and Vincent Magnier and Ahmed El Bartali and Nathalie Limodin and Denis Najjar},
+  journal   = {{SoftwareX}},
+  title     = {{CristalX}: {F}acilitating simulations for experimentally obtained grain-based microstructures},
+  year      = {2021},
+  month     = jun,
+  pages     = {100669},
+  volume    = {14},
+  doi       = {10.1016/j.softx.2021.100669},
+}
+```
+

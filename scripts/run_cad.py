@@ -21,7 +21,8 @@ data_dir = join(script_dir, 'data')
 
 # Choose whether you want to perform the simulation on the original segmented image or on the
 # image obtained by extending the original segmented image
-use_extended = True  # change to `False` if desired
+# use_extended = True  # change to `False` if desired
+use_extended = False
 
 # Use a sample image shipped with the code (https://stackoverflow.com/a/36476869/4892892)
 if use_extended:
@@ -34,8 +35,14 @@ if use_extended:
         np.save(join(data_dir, '1_labelimage_extended.npy'), image_matrix)
         image_matrix = join(data_dir, '1_labelimage_extended.npy')
 else:
-    image_matrix = join(data_dir, '1_labelimage.npy')
+    # image_matrix = join(data_dir, '1_labelimage.npy')
+    # image_matrix = join(data_dir, '2_labelimage_cropped_zoom.npy')
+    image_matrix = join(data_dir, '2_labelimage_cropped.npy')
 test_image = np.load(image_matrix)
+# Image processing algorithms require regions with integer labels
+test_image = test_image.astype(int)
+# If the microstructure contains zero labels (e.g. holes), handle them as grains
+test_image[test_image == 0] = np.max(test_image) + 1
 
 # Polygon representation of the label image
 # polygons = polygonize(test_image, search_neighbor(2, np.inf), connectivity=1)
@@ -52,4 +59,4 @@ with profile('html') as p:
     # plot_splinegons(list(splinegons.values()), color=(0, 0, 1))
 
     # Write the geometry to a STEP file
-    regions2step(list(splinegons.values()), path.join(data_dir, 'microstructure.stp'))
+    regions2step(list(splinegons.values()), path.join(data_dir, '2_microstructure.stp'))

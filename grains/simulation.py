@@ -12,14 +12,19 @@ Functions
     hallpetch
     hallpetch_plot
     change_domain
+    nature_of_deformation
 
 """
-
 from math import sqrt
 
 import numpy as np
+from scipy.stats import kurtosis
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from matplotlib.table import table
+import matplotlib.gridspec as gridspec
+
+from grains.analysis import label_image_skeleton, thicken_skeleton
 
 
 def data_Pierre():
@@ -217,3 +222,116 @@ def change_domain(image, left, right, bottom, top, padding_value=np.nan):
     pad_width = ((max(top, 0), max(bottom, 0)), (max(left, 0), max(right, 0)))
     changed_image = np.pad(changed_image, pad_width, constant_values=padding_value)
     return changed_image
+
+
+def nature_of_deformation(microstructure, strain_field, interface_width=3, visualize=True):
+    """Characterizes the intergranular/intragranular deformations.
+
+    To decide whether the strain localization is intergranular (happens along grain boundaries,
+    also called interfaces) or intragranular in a given microstructure, the strain field is
+    projected on the microstructure. Here, by strain field we mean a scalar field, often called
+    `equivalent strain` that is derived from a strain tensor.
+
+    It is irrelevant for this function whether the strain field is obtained from a numerical
+    simulation or from a (post-processed) full-field measurement. All what matters is that the
+    strain field be available on a grid of the same size as the microstructure.
+
+    The strain field is assumed to be localized on an interface if its neighborhood, with band
+    width defined by the user, contains higher strain values than what is outside the band (i.e.
+    the grain interiors). A too large band width identifies small grains to have boundary only,
+    without any interior. This means that even if the strain field in reality localizes inside
+    such small grains, the localization is classified as intergranular. However, even for
+    extreme deformations, one should not expect that the strain localizes on an interface with a
+    single-point width. Moreover, using a too small band width is susceptible to the exact position
+    of the interfaces, which are extracted from the grain microstructure. A judicial balance needs
+    to be achieved in practice.
+
+    Parameters
+    ----------
+    microstructure : ndarray
+        Labelled image corresponding to the segmented grains in a grain microstructure.
+    strain_field : ndarray
+        Discrete scalar field of the same size as the :code:`microstructure`.
+    interface_width : int, optional
+        Thickness of the band around the interfaces.
+    visualize : bool, optional
+        If True, three plots are created. Two of them show the deformation field within the bands
+        and outside the bands. They are linked together, so when you pan or zoom on one,
+        the other plot will follow. The third plot contains two histograms on top of each other,
+        giving the frequency of the strain values within the bands and outside the bands.
+
+    Returns
+    -------
+    boundary_strain : ndarray
+        Copy of :code:`strain_field`, but values outside the band are set to NaN.
+    bulk_strain : ndarray
+        Copy of :code:`strain_field`, but values within the band are set to NaN.
+    bands : ndarray
+        Boolean array of the same size as :code:`strain_field`, with True values
+        corresponding to the band.
+
+    See Also
+    --------
+    :meth:`grains.dic.DIC.strain` : Computes a strain tensor from the displacement field.
+    :meth:`grains.dic.DIC.equivalent_strain` : Extracts a scalar quantity from a strain tensor.
+    :func:`matplotlib.pyplot.hist` : Plots a histogram.
+
+    Notes
+    -----
+    1. From the modelling viewpoint, it is important to know whether the strain localizes to the
+       grain boundaries or it is dominant within the grains as well. In the former case,
+       simplifications in the models save computational time in the simulations.
+    2. In dynamics, the evolution of the strain field is relevant. E.g. an initially
+       intergranular deformation can turn into diffuse localization that occurs within the grains
+       as well. In that case, a strain field must be obtained at each time step, and this
+       function can be called for each such instance.
+
+    Examples
+    --------
+    The following figure was created by this function with :code:`visualize` set to `True` and
+    :code:`band_width` chosen to be 3.
+
+    .. image:: ../images/intergranular-intragranular_deformations.*
+
+    """
+    # Bands around the interfaces
+    bands = thicken_skeleton(label_image_skeleton(microstructure), interface_width)
+
+    # Strain values in the bands and outside the bands
+    boundary_strain = strain_field.copy()
+    bulk_strain = strain_field.copy()
+    boundary_strain[~bands] = np.nan
+    bulk_strain[bands] = np.nan
+
+    if visualize:
+        # Set up figure for showing the results
+        fig = plt.figure(tight_layout=True)
+        gs = gridspec.GridSpec(2, 2)
+        # Strain field localized onto the bands and onto the grain interiors
+        ax_1 = fig.add_subplot(gs[0, 0])
+        ax_1.imshow(boundary_strain)
+        ax_1.set_title('Strain field in the bands around the grain boundaries')
+        ax_2 = fig.add_subplot(gs[1, 0], sharex=ax_1, sharey=ax_1)
+        ax_2.imshow(bulk_strain)
+        ax_2.set_title('Strain field in the interior of the grains')
+        # Histogram to show the strain value distributions
+        ax_3 = fig.add_subplot(gs[0, 1])
+        ax_3.set_title('Normalized strain distribution')
+        normalized_boundary_strain = boundary_strain[bands] / max(boundary_strain[bands])
+        normalized_bulk_strain = bulk_strain[~bands] / max(bulk_strain[~bands])
+        _, _, h_boundary = ax_3.hist(boundary_strain[bands], bins='auto', alpha=0.5,  color='blue')
+        _, _, h_bulk = ax_3.hist(bulk_strain[~bands], bins='auto', alpha=0.5, color='red')
+        plt.legend([h_boundary, h_bulk], ['band', 'interior'])
+
+        # Relevant statistical measures
+        rows = ('mean', 'kurtosis')
+        columns = ('band', 'interior')
+        data = [[np.mean(normalized_boundary_strain), np.mean(normalized_bulk_strain)],
+                [kurtosis(normalized_boundary_strain), kurtosis(normalized_bulk_strain)]]
+        ax_4 = fig.add_subplot(gs[1, 1])
+        ax_4.set_axis_off()
+        data_table = table(ax_4, cellText=np.array(data).astype(str), rowLabels=rows,
+                           colLabels=columns, loc='center')
+        # data_table.auto_set_font_size(False)  # https://stackoverflow.com/a/15514091/4892892
+        # data_table.set_fontsize(10)
+    return boundary_strain, bulk_strain, bands

@@ -60,6 +60,7 @@ Classes
     Mesh
     FaceMesh
     InterfaceMesh
+    GUI
 
 """
 from enum import Enum
@@ -878,6 +879,182 @@ class InterfaceMesh:
         return self._interface_mesh.GetIDs()
 
 
+class GUI:
+    """Using GUI-related functionalities in Salome.
+
+    Notes
+    -----
+    A part of Salome's GUI is exposed to Python. To get an idea of what is available, see
+    https://docs.salome-platform.org/latest/gui/GUI/text_user_interface.html
+
+    """
+    component_map = {Geometry: 'GEOM', Face: 'GEOM', Edge: 'GEOM', Interface: 'GEOM',
+                     Mesh: 'SMESH', FaceMesh: 'SMESH', InterfaceMesh: 'SMESH'}
+
+    @staticmethod
+    def update_object_browser():
+        """Refreshes Salome's object browser.
+
+        Only makes sense if executed with the GUI enabled.
+
+        Returns
+        -------
+        None
+
+        See Also
+        --------
+        has_desktop
+
+        """
+        if GUI.has_desktop:
+            salome.sg.updateObjBrowser()
+
+    @staticmethod
+    def has_desktop():
+        """Indicates if the Salome GUI is running.
+
+        Returns
+        -------
+        bool
+            True if Salome's GUI is available, False otherwise.
+
+        """
+        return salome.sg.hasDesktop()
+
+    class SalomeNoDesktop(Exception):
+        """Raised when Salome is run without desktop, but a desktop functionality is invoked."""
+        pass
+
+    @staticmethod
+    def assert_salome_desktop():
+        """Checks if Salome's GUI is available, and raises an exception if it is not.
+
+        This function acts as a helper function when relying on Salome's GUI.
+
+        Raises
+        ------
+        SalomeNoDesktop
+            If Salome's GUI is not available.
+
+        """
+        if not GUI.has_desktop():
+            raise GUI.SalomeNoDesktop
+
+    @classmethod
+    def show(cls, obj, show_only=False):
+        """Shows objects in Salome's GUI.
+
+        .. todo:: Support list of objects.
+
+        Parameters
+        ----------
+        obj : iterable
+            The object(s) to be shown in Salome. Objects of the following classes are supported:
+            Geometry, Face, Edge, Interface, Mesh, FaceMesh, InterfaceMesh.
+        show_only : bool, optional
+            If True, the other objects are hidden. The default value is False.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        SalomeNoDesktop
+            If Salome's GUI is not available.
+        TypeError
+            If :code:`obj` is not an object that can be displayed.
+        ValueError
+            If the given object does not exist in the Salome study.
+
+        Examples
+        --------
+        For example, you can display an interface mesh and a face mesh by calling
+
+        .. code-block:: python
+
+                GUI.show([interface_mesh, face_mesh])
+
+        where :code:`interface_mesh` and :code:`face_mesh` are :class:`InterfaceMesh` and
+        :class:`FaceMesh` objects respectively. This way of using the `show` method provides
+        great flexibility as different types of objects can be handled at the same time.
+
+        """
+        GUI.assert_salome_desktop()
+        component = cls._get_component(obj)
+        if not component:
+            raise TypeError('Only objects of the following classes are supported: {0}.'.format(
+                            [supported_class.__name__ for supported_class in cls.component_map]))
+        study_objects = salome.myStudy.FindObjectByName(obj.name, component)
+        if len(study_objects) == 0:
+            raise ValueError('No object found by name "{0}".'.format(obj.name))
+        if len(study_objects) > 1:
+            print('More than one object found by the name "{0}". Showing the first one.'.format(
+                  obj.name))
+        object_id = study_objects[0].GetID()
+        if show_only:
+            salome.sg.DisplayOnly(object_id)
+        else:
+            salome.sg.Display(object_id)
+        salome.sg.UpdateView()
+
+    @classmethod
+    def view(cls, view='top'):
+        """Sets the viewpoint.
+
+        Parameters
+        ----------
+        view : {'front', 'back', 'top', 'bottom', 'left', 'right'}, optional
+            Position from which the scene is viewed. The default is 'top'.
+
+        Returns
+        -------
+        None
+
+        """
+        cls.assert_salome_desktop()
+        if view == 'front':
+            salome.sg.ViewFront()
+        elif view == 'back':
+            salome.sg.ViewBack()
+        elif view == 'top':
+            salome.sg.ViewTop()
+        elif view == 'bottom':
+            salome.sg.ViewBottom()
+        elif view == 'left':
+            salome.sg.ViewLeft()
+        elif view == 'right':
+            salome.sg.ViewRight()
+        else:
+            raise ValueError('Unsupported view.')
+
+    @classmethod
+    def _get_component(cls, obj):
+        """Determines the component of an object.
+
+        This function maps a class of this module to the Salome module the class uses. For instance,
+        class :class:`Face` is mapped to 'GEOM'.
+
+        Parameters
+        ----------
+        obj
+            Any object for which the component name is looked for.
+
+        Returns
+        -------
+        str or None
+            The name of the component the object belongs to. If an object of an unsupported class
+            is given, None is returned. For the list of supported classes, see the
+            :code:`component_map` member of :class:`GUI` class.
+
+        See Also
+        --------
+        show
+
+        """
+        return cls.component_map.get(type(obj))
+
+
 # The following code is executed when called from within Salome's Python interpreter
 if __name__ == "__main__":
 
@@ -895,3 +1072,7 @@ if __name__ == "__main__":
     # Fetch the mesh on the faces and on the interfaces
     mesh.obtain_face_meshes()
     mesh.obtain_interface_meshes()
+
+    # Refresh the GUI to make the objects appear
+    GUI.update_object_browser()
+    GUI.view('top')

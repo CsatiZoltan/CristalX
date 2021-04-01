@@ -18,6 +18,12 @@ except ImportError:
     HAS_MED = False
 
 try:
+    import salome
+    HAS_SALOME = True
+except ImportError:
+    HAS_SALOME = False
+
+try:
     import tables
     HAS_TABLES = True
 except ImportError:

@@ -66,6 +66,17 @@ MED
    :show-inheritance:
 
 
+.. currentmodule:: grains.salome
+
+Salome
+======
+
+.. automodule:: grains.salome
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 .. currentmodule:: grains.geometry
 
 Geometry

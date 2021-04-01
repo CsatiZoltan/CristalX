@@ -13,7 +13,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
-from grains import HAS_PYINSTRUMENT, HAS_MED, HAS_OCCT
+from grains import HAS_PYINSTRUMENT, HAS_MED, HAS_OCCT, HAS_SALOME
 
 # Recommonmark can only include Markdown files from the same directory
 from shutil import copy
@@ -84,6 +84,9 @@ apidoc_separate_modules = True
 
 # autodoc settings
 autodoc_mock_imports = []
+if not HAS_SALOME:
+    autodoc_mock_imports = ['salome', 'getStudyEditor', 'salome_notebook', 'geomBuilder',
+                            'GEOM', 'SMESH', 'SALOMEDS', 'smeshBuilder']
 if not HAS_PYINSTRUMENT:
     autodoc_mock_imports.append('pyinstrument')
 if not HAS_MED:
@@ -98,7 +101,8 @@ intersphinx_mapping = {'python': ('http://docs.python.org/3', None),
                        'matplotlib': ('http://matplotlib.org', None),
                        'skimage': ('https://scikit-image.org/docs/stable/', None),
                        'sphinx': ('https://www.sphinx-doc.org/en/stable/', None),
-                       'skan': ('https://jni.github.io/skan/', None)}
+                       'skan': ('https://jni.github.io/skan/', None),
+                       'Mesh': ('https://docs.salome-platform.org/latest/gui/SMESH/', None)}
 
 # toggleprompt settings
 toggleprompt_offset_right = 25

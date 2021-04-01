@@ -60,10 +60,12 @@ Classes
     Mesh
     FaceMesh
     InterfaceMesh
+    CohesiveZone
     GUI
 
 """
 from enum import Enum
+from functools import reduce
 
 import numpy as np
 import matplotlib.path as mpltPath
@@ -879,6 +881,274 @@ class InterfaceMesh:
         return self._interface_mesh.GetIDs()
 
 
+class CohesiveZone:
+    """Constructs zero-thickness elements along the interfaces.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        Mesh into which the cohesive elements will be inserted.
+
+    """
+    def __init__(self, mesh):
+        # TODO: `mesh` should be public data.
+        self._mesh = mesh
+        self.cohesive_elements = {}
+        self._cohesive_elements_created = False
+
+    def decouple_faces(self):
+        """Decouples the face meshes along the interfaces.
+
+        The algorithm consists of two main steps. First, new interface meshes are created that
+        overlap with the existing ones and contain independent nodes and interface elements. In
+        the same step, the incident face mesh nodes are updated to reflect the topological
+        changes. However, in this method, extra nodes are introduced at the junctions,
+        leading to a kinematic inconsistency. Therefore, the extraneous interface mesh nodes are
+        renumbered in the second step of the algorithm.
+
+        Returns
+        -------
+        None.
+
+        See Also
+        --------
+        create_cohesive_elements
+
+        """
+        self._enrich_interfaces()
+        self._correct_junction_nodes()
+
+    def create_cohesive_elements(self):
+        """Creates zero-thickness quadrilateral elements along the interfaces.
+
+        It is necessary that the mesh has already been decoupled along the interfaces by the
+        :meth:`decouple_faces` method. That method introduced duplicated nodes and edge elements
+        along the interfaces. The purpose of this method is to tie each interface (edge) element
+        to its corresponding duplicate in order to form a four-noded zero-thickness element,
+        referred to as cohesive element. The bottom edge of the new cohesive element corresponds
+        to the original edge element, while its top edge is formed by the duplicated interface
+        edge element.
+
+        Returns
+        -------
+        cohesive_elements : list
+            List of nodes that form the cohesive elements. The node numbering follows the
+            `node ordering of Salome <https://docs.salome-platform.org/latest/gui/SMESH/
+            connectivity.html#connectivity-page>`_, which is the same as the `node ordering in
+            Abaqus <https://abaqus-docs.mit.edu/2017/English/SIMACAEELMRefMap/
+            simaelm-r-cohesive2d.htm#simaelm-r-cohesive2d-t-nodedef1>`_.
+
+        See Also
+        --------
+        decouple_faces, _generate_cohesive_element, smeshBuilder.Mesh.AddFace
+
+        """
+        if self._cohesive_elements_created:
+            print('Cohesive elements already created.')
+            return self.cohesive_elements
+        # Form the cohesive elements from the overlapping interface meshes
+        n_int = len(self._mesh.interface_meshes) // 2
+        for i_int in range(n_int):
+            original_interface_mesh = self._mesh.interface_meshes[i_int]
+            duplicated_interface_mesh = self._mesh.interface_meshes[i_int + n_int]
+            interface_name = 'Interface ' + str(i_int)
+            self.cohesive_elements[interface_name] = []
+            for orig_elem, dupl_elem in zip(original_interface_mesh.elements(),
+                                            duplicated_interface_mesh.elements()):
+                cohesive_element = self._generate_cohesive_element(orig_elem, dupl_elem)
+                elem = self._mesh._mesh.AddFace(cohesive_element)
+                self.cohesive_elements[interface_name].append(elem)
+        self._cohesive_elements_created = True
+        return self.cohesive_elements
+
+    def _enrich_interfaces(self):
+        """Inserts new interface elements and nodes into the mesh.
+
+        Although Salome has built-in functionality for duplicating nodes and creating elements,
+        even accessible from the GUI with `Modification -> Transformation -> Duplicate Nodes
+        and/or Elements`, it does not work with multiple intersecting interfaces or for closed
+        interfaces. The reason is that the first step of the two-step procedure Salome performs
+        fails in such situations. Therefore, this method uses a modified algorithm for the first
+        step, and then calls the second step. These steps are the following:
+
+        1. Find the elements (called affected elements) in the mesh whose node numbers need to be
+        changed due to the topological changes in the mesh caused by the introduction of new nodes.
+
+        2. The affected elements are fed to an existing function in Salome, which returns the 1D
+        elements it creates from the duplicated nodes. The new interface mesh is stored in the
+        :class:`CohesiveZone` object.
+
+        Returns
+        -------
+        None.
+
+        See Also
+        --------
+        decouple_faces, _affected_elements, smeshBuilder.Mesh.DoubleNodeElemGroups,
+        smeshBuilder.Mesh.MakeGroupByIds
+
+        """
+        new_interface_mesh_objects = []
+        for i, interface_mesh in enumerate(self._mesh.interface_meshes):
+            # The node numbers of the following face elements will be modified
+            affected_elements = self._affected_elements(interface_mesh)
+            # The "DoubleNodeElemGroups" function of Salome requires us to create a group from
+            # the face elements
+            a = self._mesh._mesh.MakeGroupByIds(str(i+1), SMESH.FACE, list(affected_elements))
+            # Create a new interface mesh; Salome will construct a new mesh group
+            new_interface_mesh = self._mesh._mesh.DoubleNodeElemGroups(
+                [interface_mesh._interface_mesh], [], [a], True, False)
+            if new_interface_mesh is None:  # sometimes Salome cannot perform this operation; WHY?
+                raise Exception('Interface {0} could not be enriched.'.format(i+1))
+            interface_name = 'Interface_' + str(i+1) + '_doubled'
+            new_interface_mesh.SetName(interface_name)
+            new_interface_mesh_objects.append(InterfaceMesh(new_interface_mesh, name=interface_name,
+                                                            on_interface=interface_mesh.on_interface))
+        self._mesh.interface_meshes.extend(new_interface_mesh_objects)
+
+    def _affected_elements(self, interface_mesh):
+        """Face elements whose nodes must be renumbered when duplicating an interface mesh.
+
+        Parameters
+        ----------
+        interface_mesh : InterfaceMesh
+            The original interface mesh that will be duplicated.
+
+        Returns
+        -------
+        elements : set
+            Elements of the mesh that require node renumbering.
+
+        See Also
+        --------
+        _enrich_interfaces
+
+        """
+        # Elements connecting to the interface mesh
+        yield_one_ring = (self._mesh.one_ring(node, definition='connecting') for node in
+                          interface_mesh.nodes())
+        neighboring_face_elements = reduce(set().union, yield_one_ring)
+        # First neighboring face mesh to this interface mesh
+        face_name = interface_mesh.on_interface.neighboring_faces[0].name
+        incident_face_mesh = None
+        for face_mesh in self._mesh.face_meshes:
+            if face_mesh.name == face_name:
+                incident_face_mesh = face_mesh
+                break
+        if not incident_face_mesh:
+            raise Exception('Could not find a face incident to this interface mesh.')
+        # Only those elements are considered that are part of the face the interface is incident to
+        elements = neighboring_face_elements.intersection(incident_face_mesh.elements())
+        return elements
+
+    def _correct_junction_nodes(self):
+        """Post-processing to handle inconsistent interface nodes at the junctions.
+
+        The interface-wise creation of new edge elements in :meth:`_affected_elements` may result
+        in edge element nodes that do not connect the opposite face element nodes on the two
+        sides of the interface. This function checks the edge element nodes at the junctions and
+        renumbers them so that they hold the same label as the face element nodes they connect to.
+
+        Returns
+        -------
+        None.
+
+        See Also
+        --------
+        decouple_faces, _affected_elements, smeshBuilder.Mesh.FindCoincidentNodesOnPart,
+        smeshBuilder.Mesh.ChangeElemNodes
+
+        """
+        # Check if all interfaces could be enriched in the previous step
+        n_interface = len(self._mesh._geometry.interfaces)
+        n_interface_mesh = len(self._mesh.interface_meshes)
+        if 2*n_interface != n_interface_mesh:
+            raise ValueError('Not all interfaces could be enriched.')
+        #
+        for i, interface in enumerate(self._mesh._geometry.interfaces):
+            interface_mesh_original = self._mesh.interface_meshes[i]
+            interface_mesh_duplicated = self._mesh.interface_meshes[i+n_interface]
+            interface_meshes = [interface_mesh_original, interface_mesh_duplicated]
+            face1 = interface.neighboring_faces[0]
+            face2 = interface.neighboring_faces[1]
+            face_mesh1 = self._mesh.face_meshes[self._mesh._geometry.faces.index(face1)]
+            face_mesh2 = self._mesh.face_meshes[self._mesh._geometry.faces.index(face2)]
+            face_meshes = [face_mesh2, face_mesh1]
+            for interface_mesh, face_mesh in zip(interface_meshes, face_meshes):
+                endpoint_nodes = interface_mesh.endpoint_nodes()
+                if len(endpoint_nodes) == 1:  # closed interface
+                    continue  # closed interfaces are not influenced by other interfaces
+                else:  # open interface
+                    for node in endpoint_nodes:  # possible inconsistency at the junctions
+                        node_collection = face_mesh.nodes()
+                        node_collection.append(node)
+                        coincident_nodes = self._mesh._mesh.FindCoincidentNodesOnPart(
+                            node_collection, 1e-5)
+                        if not coincident_nodes:  # if coincident_nodes = [], nodes are consistent
+                            continue
+                        else:
+                            coincident_nodes = coincident_nodes[0]
+                            if len(coincident_nodes) != 2:
+                                raise Exception(
+                                    'len(coincident_nodes) = {0}'.format(len(coincident_nodes)))
+                            coincident_nodes = set(coincident_nodes)
+                            connecting_face_node = list(coincident_nodes.difference([node]))[0]
+                            # Find the interface element that holds the junction node
+                            interface_elem = interface_mesh.elements_by_nodes([node])
+                            if len(interface_elem) != 1:
+                                raise ValueError('One element must contain the junction node.')
+                            # Replace that node with the one on the face mesh, determined above
+                            interface_elem = interface_elem[0]
+                            old_nodes = self._mesh._mesh.GetElemNodes(interface_elem)
+                            new_nodes = old_nodes
+                            new_nodes[old_nodes.index(node)] = connecting_face_node
+                            self._mesh._mesh.ChangeElemNodes(interface_elem, new_nodes)
+
+    def _generate_cohesive_element(self, bottom_element, top_element):
+        """Creates a zero-thickness quadrilateral element.
+
+        Parameters
+        ----------
+        bottom_element : int
+            Edge element that will form the bottom edge of the cohesive element.
+        top_element: int
+            Edge element that will form the top edge of the cohesive element. It is assumed that
+            the top element geometrically overlaps with the bottom element.
+
+        Returns
+        -------
+        list of int
+            The four nodes of the cohesive element, numbered counter-clockwise. The node
+            ordering adheres to the `node numbering in Abaqus <https://abaqus-docs.mit.edu/2017/
+            English/SIMACAEELMRefMap/simaelm-r-cohesive2d.htm#simaelm-r-cohesive2d-t-nodedef1>`_.
+
+        See Also
+        --------
+        :meth:`Mesh.incident_elements`, :meth:`Mesh.element_edge_normal`,
+        smeshBuilder.Mesh.GetElemNodes, smeshBuilder.Mesh.GetNodeXYZ
+
+        """
+        # Construct a cohesive element from the interface element pair
+        bottom_nodes = self._mesh._mesh.GetElemNodes(bottom_element)
+        top_nodes = self._mesh._mesh.GetElemNodes(top_element)
+        # Face element the interface element is attached to
+        face_elem = self._mesh.incident_elements(bottom_nodes, Mesh.ElementType.FACE)
+        # Outward-pointing normal vector to the face element edge
+        normal = np.array(self._mesh.element_edge_normal(face_elem[0], bottom_nodes))
+        # Translate a node on the top element in the direction of the normal vector
+        P2 = np.array(self._mesh._mesh.GetNodeXYZ(top_nodes[1])[:2])
+        perturbation = 1e-10  # TODO: use a non-absolute measure
+        P2_shifted = P2 + perturbation*normal
+        # Ensure that the cohesive element has CCW orientation
+        N1 = np.array(self._mesh._mesh.GetNodeXYZ(bottom_nodes[0])[:2])
+        N2 = np.array(self._mesh._mesh.GetNodeXYZ(bottom_nodes[1])[:2])
+        cross_product = np.cross(N2 - N1, P2_shifted - N2)
+        if cross_product > 0:
+            return [bottom_nodes[0], bottom_nodes[1], top_nodes[1], top_nodes[0]]
+        else:
+            return [bottom_nodes[1], bottom_nodes[0], top_nodes[0], top_nodes[1]]
+
+
 class GUI:
     """Using GUI-related functionalities in Salome.
 
@@ -1072,6 +1342,11 @@ if __name__ == "__main__":
     # Fetch the mesh on the faces and on the interfaces
     mesh.obtain_face_meshes()
     mesh.obtain_interface_meshes()
+
+    # Create cohesive elements
+    cohesive_zone = CohesiveZone(mesh)
+    cohesive_zone.decouple_faces()
+    cohesive_zone.create_cohesive_elements()
 
     # Refresh the GUI to make the objects appear
     GUI.update_object_browser()

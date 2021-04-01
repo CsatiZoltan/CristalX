@@ -98,7 +98,7 @@ if not HAS_OCCT:
 intersphinx_mapping = {'python': ('http://docs.python.org/3', None),
                        'numpy': ('https://numpy.org/doc/stable/', None),
                        'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
-                       'matplotlib': ('http://matplotlib.org', None),
+                       'matplotlib': ('http://matplotlib.org/stable', None),
                        'skimage': ('https://scikit-image.org/docs/stable/', None),
                        'sphinx': ('https://www.sphinx-doc.org/en/stable/', None),
                        'skan': ('https://jni.github.io/skan/', None),

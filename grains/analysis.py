@@ -496,3 +496,32 @@ def label_image_apply_mask(label_image, mask, value):
     label_image = label_image.copy()
     label_image[mask] = value
     return label_image
+
+
+def truecolor2label(color_image):
+    """Truecolor image into labeled image.
+
+    It is often the case that you need to deal with a labeled image that was saved as a truecolor
+    image (e.g. RGB). A labeled region is then the set of pixels with the same colors.
+
+    Parameters
+    ----------
+    color_image : ndarray
+        3D array, the first two dimensions corresponding to the image pixels, the third one for
+        the channels (e.g. RGB, HSV, CMYK, etc.).
+
+    Returns
+    -------
+    ndarray
+        Labeled image, represented as a 2D numpy array of non-negative integers.
+
+    """
+    image_shape = np.shape(color_image)
+    if len(image_shape) != 3:
+        raise ValueError('A truecolor image with multiple channels is expected.')
+    image_size = image_shape[0:2]
+    n_pixel = np.prod(image_size)
+    n_channel = image_shape[2]
+    u, indices = np.unique(color_image.reshape((n_pixel, n_channel)), return_inverse=True, axis=0)
+    return indices.reshape(image_size) + 1
+

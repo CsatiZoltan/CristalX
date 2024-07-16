@@ -8,3 +8,5 @@ networkx~=2.4
 pyinstrument
 git+git://github.com/bluenote10/PandasDataFrameGUI@master#egg=dfgui
 
+setuptools>=70.0.0 # not directly required, pinned by Snyk to avoid a vulnerability
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability

@@ -1,6 +1,6 @@
 scikit-image>=0.13.0
 matplotlib
-skan~=0.8
+skan~=0.9
 scipy~=1.4.1
 tables~=3.6.1
 pandas~=1.0.1
